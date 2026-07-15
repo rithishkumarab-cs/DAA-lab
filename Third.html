@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MST Simulator | Kruskal vs Prim</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root[data-theme="dark"] {
+            --bg-base: #0f172a;
+            --bg-gradient: radial-gradient(circle at top left, #1e1b4b, #0f172a, #020617);
+            --glass-bg: rgba(30, 41, 59, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --node-fill: #1e293b;
+            --node-stroke: #38bdf8;
+            --edge-normal: #475569;
+            --panel-bg: rgba(15, 23, 42, 0.8);
+        }
+
+        :root[data-theme="light"] {
+            --bg-base: #f8fafc;
+            --bg-gradient: radial-gradient(circle at top left, #e0e7ff, #f8fafc, #f1f5f9);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --accent: #db2777;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --node-fill: #ffffff;
+            --node-stroke: #0ea5e9;
+            --edge-normal: #cbd5e1;
+            --panel-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            z-index: 10;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.2rem;
+        }
+
+        .header-title p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .controls-top button {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .controls-top button:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Layout */
+        .dashboard {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 0 1rem 1rem 1rem;
+            gap: 1rem;
+        }
+
+        /* Panels */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .panel::-webkit-scrollbar { width: 6px; }
+        .panel::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+
+        .left-panel { width: 300px; }
+        .right-panel { width: 350px; }
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        /* Canvas Container */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+
+        /* UI Elements */
+        h2, h3 { font-size: 1rem; margin-bottom: 0.75rem; color: var(--text-main); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; }
+        
+        button.btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        button.btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button.btn.secondary { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        button.btn.secondary:hover { background: var(--primary); color: white; }
+        button.btn.danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        button.btn.danger:hover { background: var(--danger); color: white; }
+
+        .btn-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .btn-group .btn { margin-bottom: 0; }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .data-table th, .data-table td {
+            padding: 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .data-table th { color: var(--text-muted); font-weight: 600; }
+        
+        input[type="number"] {
+            width: 100%;
+            background: rgba(0,0,0,0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.4rem;
+            border-radius: 4px;
+        }
+
+        /* Log & Live Stats */
+        .bottom-dash {
+            height: 200px;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .step-log {
+            flex: 1;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            padding: 1rem;
+            list-style: none;
+        }
+        .step-log li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--glass-border); }
+        .log-success { color: var(--success); }
+        .log-danger { color: var(--danger); }
+        .log-warning { color: var(--warning); }
+        .log-info { color: var(--primary); }
+
+        .live-stats {
+            width: 300px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+        .stat-box { text-align: center; background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 8px; }
+        .stat-value { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+        .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+
+        /* Charts Container */
+        .chart-box {
+            height: 180px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        /* Floating Output Cards */
+        .output-card {
+            background: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid transparent;
+        }
+        .output-card.kruskal { border-color: var(--primary); }
+        .output-card.prim { border-color: var(--accent); }
+        .metric { display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.85rem; }
+        .metric-val { font-weight: bold; }
+
+        /* Sliders */
+        .slider-container { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+        .slider-container label { font-size: 0.85rem; color: var(--text-muted); }
+        input[type="range"] { flex: 1; accent-color: var(--primary); }
+
+        /* Badges */
+        .badge { padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: bold; }
+        .badge.green { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge.red { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge.orange { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+    </style>
+</head>
+<body>
+
+    <header class="glass">
+        <div class="header-title">
+            <h1>Experiment No. 3: Minimum Spanning Tree Simulator</h1>
+            <p>Compare Kruskal's and Prim's greedy algorithms for constructing the MST.</p>
+        </div>
+        <div class="controls-top">
+            <button onclick="toggleTheme()" id="themeToggle">☀️ Light Mode</button>
+            <span style="font-size: 0.8rem; margin-left: 1rem; color: var(--text-muted);">Shortcuts: [Space] Pause/Resume, [R] Reset</span>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        
+        <!-- LEFT PANEL: Inputs & Controls -->
+        <aside class="panel glass left-panel">
+            <h2>Graph Input</h2>
+            
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center;">
+                <label style="font-size: 0.85rem; color: var(--text-muted);">Vertices:</label>
+                <input type="number" id="numVertices" value="7" min="2" max="20" style="width: 60px;">
+                <button class="btn secondary" style="margin: 0; padding: 0.4rem;" onclick="updateVertices()">Update</button>
+            </div>
+
+            <table class="data-table" id="edgeTable">
+                <thead>
+                    <tr>
+                        <th>Src</th>
+                        <th>Dest</th>
+                        <th>Weight</th>
+                        <th>Act</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+            
+            <button class="btn secondary" onclick="addEmptyEdgeRow()">+ Add Edge</button>
+            
+            <div class="btn-group" style="margin-top: 1rem;">
+                <button class="btn" onclick="loadSampleGraph()">Sample</button>
+                <button class="btn" onclick="generateRandomGraph()">Random</button>
+                <button class="btn danger" onclick="clearGraph()">Clear</button>
+            </div>
+
+            <h2>Run Controls</h2>
+            <div class="slider-container">
+                <label>Speed</label>
+                <input type="range" id="animSpeed" min="50" max="1500" value="500" dir="rtl">
+            </div>
+
+            <button class="btn" onclick="runAlgorithm('kruskal')" id="btnKruskal">▶ Run Kruskal</button>
+            <button class="btn" onclick="runAlgorithm('prim')" style="background: var(--accent);" id="btnPrim">▶ Run Prim</button>
+            <button class="btn secondary" onclick="runAlgorithm('both')" id="btnBoth">▶ Run Both (Compare)</button>
+            
+            <div class="btn-group">
+                <button class="btn secondary" onclick="togglePause()" id="btnPause">⏸ Pause</button>
+                <button class="btn danger" onclick="resetSimulation()">⏹ Reset</button>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Visualization & Logs -->
+        <main class="center-panel">
+            <div class="canvas-container glass" id="canvasContainer">
+                <canvas id="graphCanvas"></canvas>
+            </div>
+            
+            <div class="bottom-dash">
+                <div class="live-stats glass">
+                    <div class="stat-box"><div class="stat-label">Vertices</div><div class="stat-value" id="statV">0</div></div>
+                    <div class="stat-box"><div class="stat-label">Edges</div><div class="stat-value" id="statE">0</div></div>
+                    <div class="stat-box"><div class="stat-label">MST Cost</div><div class="stat-value" id="statCost">0</div></div>
+                    <div class="stat-box"><div class="stat-label">Selected</div><div class="stat-value" id="statSelected">0</div></div>
+                    <div class="stat-box"><div class="stat-label">Remaining</div><div class="stat-value" id="statRem">0</div></div>
+                    <div class="stat-box"><div class="stat-label">Cycles Prevented</div><div class="stat-value" id="statCycles">0</div></div>
+                </div>
+                
+                <ul class="step-log glass" id="stepLog">
+                    <li class="log-info">System initialized. Awaiting execution.</li>
+                </ul>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL: Outputs & Charts -->
+        <aside class="panel glass right-panel">
+            <h2>Algorithm State</h2>
+            <div id="algoStateContainer" style="font-size: 0.85rem; margin-bottom: 1rem; min-height: 100px;">
+                <p style="color: var(--text-muted);">Run an algorithm to see Union-Find or Priority Queue structures here.</p>
+            </div>
+
+            <h2>Output Metrics</h2>
+            
+            <div class="output-card kruskal">
+                <h3>Kruskal's Algorithm</h3>
+                <div class="metric"><span>MST Cost</span><span class="metric-val" id="k-cost">-</span></div>
+                <div class="metric"><span>Edges</span><span class="metric-val" id="k-edges">-</span></div>
+                <div class="metric"><span>Exec Time</span><span class="metric-val" id="k-time">- ms</span></div>
+                <div class="metric"><span>Status</span><span class="metric-val" id="k-status" style="color:var(--text-muted)">Pending</span></div>
+            </div>
+
+            <div class="output-card prim">
+                <h3>Prim's Algorithm</h3>
+                <div class="metric"><span>MST Cost</span><span class="metric-val" id="p-cost">-</span></div>
+                <div class="metric"><span>Edges</span><span class="metric-val" id="p-edges">-</span></div>
+                <div class="metric"><span>Exec Time</span><span class="metric-val" id="p-time">- ms</span></div>
+                <div class="metric"><span>Status</span><span class="metric-val" id="p-status" style="color:var(--text-muted)">Pending</span></div>
+            </div>
+
+            <h2>Performance Charts</h2>
+            <div class="chart-box">
+                <canvas id="timeChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <canvas id="pieChart"></canvas>
+            </div>
+            
+            <h2>Complexity Analysis</h2>
+            <table class="data-table">
+                <tr><th>Algo</th><th>Time</th><th>Space</th></tr>
+                <tr><td>Kruskal</td><td>O(E log E)</td><td>O(V + E)</td></tr>
+                <tr><td>Prim</td><td>O(E log V)</td><td>O(V)</td></tr>
+            </table>
+        </aside>
+
+    </div>
+
+<script>
+    // --- State & Global Variables ---
+    let graph = {
+        vertices: 7,
+        nodes: [], // {id, x, y}
+        edges: []  // {src, dest, weight, state} state: normal, processing, accepted, rejected
+    };
+
+    let animState = {
+        running: false,
+        paused: false,
+        currentAlgo: null,
+        resolvePause: null
+    };
+
+    let metrics = {
+        kruskal: { cost: 0, edges: 0, time: 0, accepted: 0, rejected: 0, completed: false },
+        prim: { cost: 0, edges: 0, time: 0, completed: false }
+    };
+
+    // Canvas setup
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    let transform = { x: 0, y: 0, scale: 1 };
+    let isDraggingNode = null;
+    let isPanning = false;
+    let startPan = {x:0, y:0};
+
+    // Charts
+    let timeChart, pieChart;
+
+    // --- Initialization ---
+    function init() {
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        setupCanvasInteractions();
+        setupKeyboardShortcuts();
+        initCharts();
+        loadSampleGraph();
+        requestAnimationFrame(renderLoop);
+    }
+
+    function toggleTheme() {
+        const body = document.documentElement;
+        if(body.getAttribute('data-theme') === 'dark') {
+            body.setAttribute('data-theme', 'light');
+            document.getElementById('themeToggle').innerText = '🌙 Dark Mode';
+        } else {
+            body.setAttribute('data-theme', 'dark');
+            document.getElementById('themeToggle').innerText = '☀️ Light Mode';
+        }
+        updateChartColors();
+    }
+
+    function log(msg, type='info') {
+        const ul = document.getElementById('stepLog');
+        const li = document.createElement('li');
+        li.className = `log-${type}`;
+        
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric", fractionalSecondDigits: 2 });
+        li.innerHTML = `[${time}] ${msg}`;
+        
+        ul.appendChild(li);
+        ul.scrollTop = ul.scrollHeight;
+    }
+
+    function clearLog() {
+        document.getElementById('stepLog').innerHTML = '';
+    }
+
+    // --- Graph Data Management ---
+    function generateNodePositions(num) {
+        graph.nodes = [];
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const r = Math.min(cx, cy) - 50;
+        
+        for(let i=0; i<num; i++) {
+            // Circular layout
+            const angle = (i / num) * 2 * Math.PI - Math.PI/2;
+            graph.nodes.push({
+                id: i,
+                x: cx + r * Math.cos(angle),
+                y: cy + r * Math.sin(angle)
+            });
+        }
+    }
+
+    function loadSampleGraph() {
+        clearLog();
+        log("Loading Sample Graph (7 vertices, 11 edges)");
+        document.getElementById('numVertices').value = 7;
+        graph.vertices = 7;
+        generateNodePositions(7);
+        
+        // Arrange to look nice
+        const cx = canvas.width/2, cy = canvas.height/2;
+        graph.nodes = [
+            {id: 0, x: cx - 150, y: cy - 100},
+            {id: 1, x: cx, y: cy - 150},
+            {id: 2, x: cx + 150, y: cy - 100},
+            {id: 3, x: cx - 100, y: cy + 50},
+            {id: 4, x: cx + 100, y: cy + 50},
+            {id: 5, x: cx - 200, y: cy + 150},
+            {id: 6, x: cx + 200, y: cy + 150}
+        ];
+
+        graph.edges = [
+            {src: 0, dest: 1, weight: 7, state: 'normal'},
+            {src: 0, dest: 3, weight: 5, state: 'normal'},
+            {src: 1, dest: 2, weight: 8, state: 'normal'},
+            {src: 1, dest: 3, weight: 9, state: 'normal'},
+            {src: 1, dest: 4, weight: 7, state: 'normal'},
+            {src: 2, dest: 4, weight: 5, state: 'normal'},
+            {src: 3, dest: 4, weight: 15, state: 'normal'},
+            {src: 3, dest: 5, weight: 6, state: 'normal'},
+            {src: 4, dest: 5, weight: 8, state: 'normal'},
+            {src: 4, dest: 6, weight: 9, state: 'normal'},
+            {src: 5, dest: 6, weight: 11, state: 'normal'}
+        ];
+        
+        refreshEdgeTable();
+        updateLiveStats();
+    }
+
+    function generateRandomGraph() {
+        clearLog();
+        log("Generating random connected graph");
+        const v = parseInt(document.getElementById('numVertices').value) || parseInt(Math.random()*6 + 4);
+        document.getElementById('numVertices').value = v;
+        graph.vertices = v;
+        generateNodePositions(v);
+        
+        graph.edges = [];
+        // Ensure connectivity (Spanning Tree)
+        for(let i=1; i<v; i++) {
+            const dest = parseInt(Math.random() * i);
+            graph.edges.push({src: i, dest: dest, weight: parseInt(Math.random()*20)+1, state: 'normal'});
+        }
+        // Add random edges
+        const extra = parseInt(v * 1.5);
+        for(let i=0; i<extra; i++) {
+            const src = parseInt(Math.random() * v);
+            const dest = parseInt(Math.random() * v);
+            if(src !== dest && !graph.edges.find(e => (e.src===src && e.dest===dest) || (e.src===dest && e.dest===src))) {
+                graph.edges.push({src, dest, weight: parseInt(Math.random()*20)+1, state: 'normal'});
+            }
+        }
+        refreshEdgeTable();
+        updateLiveStats();
+    }
+
+    function clearGraph() {
+        graph.edges = [];
+        refreshEdgeTable();
+        resetVisualState();
+        log("Graph cleared", "danger");
+    }
+
+    function updateVertices() {
+        const v = parseInt(document.getElementById('numVertices').value);
+        if(v < 2 || v > 20) return alert("Vertices must be between 2 and 20");
+        graph.vertices = v;
+        generateNodePositions(v);
+        
+        // Remove edges pointing to non-existent nodes
+        graph.edges = graph.edges.filter(e => e.src < v && e.dest < v);
+        refreshEdgeTable();
+        resetVisualState();
+        log(`Updated vertices to ${v}`);
+    }
+
+    // --- DOM Table Management ---
+    function refreshEdgeTable() {
+        const tbody = document.querySelector('#edgeTable tbody');
+        tbody.innerHTML = '';
+        graph.edges.forEach((e, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="number" value="${e.src}" min="0" max="${graph.vertices-1}" onchange="updateEdge(${i}, 'src', this.value)"></td>
+                <td><input type="number" value="${e.dest}" min="0" max="${graph.vertices-1}" onchange="updateEdge(${i}, 'dest', this.value)"></td>
+                <td><input type="number" value="${e.weight}" min="1" onchange="updateEdge(${i}, 'weight', this.value)"></td>
+                <td><button class="btn danger" style="padding: 0.2rem; font-size: 0.7rem;" onclick="removeEdge(${i})">X</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        updateLiveStats();
+    }
+
+    function addEmptyEdgeRow() {
+        graph.edges.push({src: 0, dest: 1, weight: 1, state: 'normal'});
+        refreshEdgeTable();
+    }
+
+    window.updateEdge = function(idx, prop, val) {
+        val = parseInt(val);
+        if(prop !== 'weight' && (val < 0 || val >= graph.vertices)) return alert("Invalid vertex ID");
+        graph.edges[idx][prop] = val;
+        resetVisualState();
+    };
+
+    window.removeEdge = function(idx) {
+        graph.edges.splice(idx, 1);
+        refreshEdgeTable();
+        resetVisualState();
+    };
+
+    function updateLiveStats() {
+        document.getElementById('statV').innerText = graph.vertices;
+        document.getElementById('statE').innerText = graph.edges.length;
+    }
+
+    // --- Canvas Rendering ---
+    function resizeCanvas() {
+        const container = document.getElementById('canvasContainer');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
+
+    function renderLoop() {
+        // Colors based on theme
+        const style = getComputedStyle(document.body);
+        const bg = style.getPropertyValue('--bg-base');
+        const nFill = style.getPropertyValue('--node-fill');
+        const nStroke = style.getPropertyValue('--node-stroke');
+        const eNormal = style.getPropertyValue('--edge-normal');
+        const textMain = style.getPropertyValue('--text-main');
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        ctx.translate(transform.x, transform.y);
+        ctx.scale(transform.scale, transform.scale);
+
+        // Draw Edges
+        graph.edges.forEach(e => {
+            const n1 = graph.nodes[e.src];
+            const n2 = graph.nodes[e.dest];
+            if(!n1 || !n2) return;
+
+            ctx.beginPath();
+            ctx.moveTo(n1.x, n1.y);
+            ctx.lineTo(n2.x, n2.y);
+            
+            ctx.lineWidth = 3;
+            if(e.state === 'accepted') {
+                ctx.strokeStyle = '#10b981';
+                ctx.lineWidth = 5;
+            } else if(e.state === 'processing') {
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 5;
+                ctx.setLineDash([10, 5]);
+            } else if(e.state === 'rejected') {
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.strokeStyle = eNormal;
+                ctx.setLineDash([]);
+            }
+            
+            ctx.stroke();
+            ctx.setLineDash([]); // reset
+
+            // Weight text
+            const mx = (n1.x + n2.x)/2;
+            const my = (n1.y + n2.y)/2;
+            ctx.fillStyle = (e.state === 'accepted') ? '#10b981' : textMain;
+            ctx.font = 'bold 14px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // bg for text
+            ctx.fillStyle = bg;
+            ctx.beginPath();
+            ctx.arc(mx, my, 12, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.fillStyle = (e.state === 'accepted') ? '#10b981' : (e.state === 'rejected' ? '#ef4444' : textMain);
+            ctx.fillText(e.weight, mx, my);
+        });
+
+        // Draw Nodes
+        graph.nodes.forEach(n => {
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, 20, 0, Math.PI*2);
+            ctx.fillStyle = nFill;
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = nStroke;
+            ctx.stroke();
+
+            ctx.fillStyle = textMain;
+            ctx.font = 'bold 16px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(n.id, n.x, n.y);
+        });
+
+        ctx.restore();
+        requestAnimationFrame(renderLoop);
+    }
+
+    // --- Interaction ---
+    function setupCanvasInteractions() {
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left - transform.x) / transform.scale;
+            const mouseY = (e.clientY - rect.top - transform.y) / transform.scale;
+
+            // Check if clicking node
+            isDraggingNode = graph.nodes.find(n => Math.hypot(n.x - mouseX, n.y - mouseY) < 20);
+            
+            if(!isDraggingNode) {
+                isPanning = true;
+                startPan = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if(isDraggingNode) {
+                const rect = canvas.getBoundingClientRect();
+                isDraggingNode.x = (e.clientX - rect.left - transform.x) / transform.scale;
+                isDraggingNode.y = (e.clientY - rect.top - transform.y) / transform.scale;
+            } else if(isPanning) {
+                transform.x = e.clientX - startPan.x;
+                transform.y = e.clientY - startPan.y;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDraggingNode = null;
+            isPanning = false;
+        });
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+            transform.scale = Math.min(Math.max(0.5, transform.scale * zoomAmount), 3);
+        });
+    }
+
+    function setupKeyboardShortcuts() {
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'Space') {
+                e.preventDefault();
+                togglePause();
+            }
+            if(e.code === 'KeyR') resetSimulation();
+        });
+    }
+
+    // --- Animation Control ---
+    const getSpeed = () => parseInt(document.getElementById('animSpeed').value);
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function checkPause() {
+        if(!animState.running) throw new Error("Stopped");
+        if(animState.paused) {
+            return new Promise(resolve => {
+                animState.resolvePause = resolve;
+            });
+        }
+    }
+
+    function togglePause() {
+        if(!animState.running) return;
+        animState.paused = !animState.paused;
+        const btn = document.getElementById('btnPause');
+        
+        if(animState.paused) {
+            btn.innerHTML = '▶ Resume';
+            btn.classList.add('warning');
+            log("Simulation paused", "warning");
+        } else {
+            btn.innerHTML = '⏸ Pause';
+            btn.classList.remove('warning');
+            log("Simulation resumed", "success");
+            if(animState.resolvePause) {
+                animState.resolvePause();
+                animState.resolvePause = null;
+            }
+        }
+    }
+
+    function resetVisualState() {
+        graph.edges.forEach(e => e.state = 'normal');
+        document.getElementById('statCost').innerText = "0";
+        document.getElementById('statSelected').innerText = "0";
+        document.getElementById('statRem').innerText = graph.edges.length;
+        document.getElementById('statCycles').innerText = "0";
+        document.getElementById('algoStateContainer').innerHTML = '<p style="color: var(--text-muted);">Structures will appear here.</p>';
+    }
+
+    function resetSimulation() {
+        animState.running = false;
+        animState.paused = false;
+        if(animState.resolvePause) animState.resolvePause();
+        
+        document.getElementById('btnPause').innerHTML = '⏸ Pause';
+        resetVisualState();
+        clearLog();
+        log("Simulation reset");
+    }
+
+    // --- Data Structures ---
+    class UnionFind {
+        constructor(n) {
+            this.parent = Array.from({length: n}, (_, i) => i);
+        }
+        find(i) {
+            if(this.parent[i] === i) return i;
+            return this.parent[i] = this.find(this.parent[i]);
+        }
+        union(i, j) {
+            let rootI = this.find(i);
+            let rootJ = this.find(j);
+            if(rootI !== rootJ) {
+                this.parent[rootI] = rootJ;
+                return true;
+            }
+            return false;
+        }
+        renderHTML() {
+            let html = `<table class="data-table" style="text-align:center;"><tr><th>Node</th>`;
+            for(let i=0; i<this.parent.length; i++) html += `<td>${i}</td>`;
+            html += `</tr><tr><th>Parent</th>`;
+            for(let i=0; i<this.parent.length; i++) html += `<td>${this.parent[i]}</td>`;
+            html += `</tr></table>`;
+            return html;
+        }
+    }
+
+    // --- Algorithms ---
+
+    async function runAlgorithm(type) {
+        if(animState.running) resetSimulation();
+        
+        // Validation
+        if(graph.edges.length === 0) return alert("Add edges first!");
+        
+        animState.running = true;
+        
+        if(type === 'kruskal') {
+            await executeKruskal();
+        } else if(type === 'prim') {
+            await executePrim();
+        } else if(type === 'both') {
+            await executeKruskal();
+            if(!animState.running) return; // if reset
+            await sleep(1500);
+            resetVisualState();
+            await executePrim();
+        }
+        
+        if(animState.running) {
+            animState.running = false;
+            updateCharts();
+        }
+    }
+
+    async function executeKruskal() {
+        animState.currentAlgo = 'kruskal';
+        resetVisualState();
+        clearLog();
+        log("Starting Kruskal's Algorithm...", "info");
+        document.getElementById('k-status').innerText = 'Running...';
+        document.getElementById('k-status').style.color = 'var(--warning)';
+
+        const t0 = performance.now();
+        let mstCost = 0, selectedEdges = 0, cycles = 0;
+        metrics.kruskal.accepted = 0; metrics.kruskal.rejected = 0;
+
+        // Sort edges (shallow copy and add index to map back to original graph obj)
+        let edges = graph.edges.map((e, idx) => ({...e, idx})).sort((a,b) => a.weight - b.weight);
+        let uf = new UnionFind(graph.vertices);
+        const stateDiv = document.getElementById('algoStateContainer');
+
+        try {
+            stateDiv.innerHTML = `<h3>Union-Find Table</h3>${uf.renderHTML()}`;
+            
+            for(let i=0; i<edges.length; i++) {
+                await checkPause();
+                let edgeInfo = edges[i];
+                let e = graph.edges[edgeInfo.idx];
+                
+                // Highlight processing
+                e.state = 'processing';
+                log(`Processing edge (${e.src} - ${e.dest}) weight: ${e.weight}`);
+                await sleep(getSpeed());
+                await checkPause();
+
+                if(uf.find(e.src) !== uf.find(e.dest)) {
+                    uf.union(e.src, e.dest);
+                    e.state = 'accepted';
+                    mstCost += e.weight;
+                    selectedEdges++;
+                    metrics.kruskal.accepted++;
+                    log(`Accepted edge (${e.src} - ${e.dest}). Added ${e.weight} to cost.`, "success");
+                } else {
+                    e.state = 'rejected';
+                    cycles++;
+                    metrics.kruskal.rejected++;
+                    log(`Rejected edge (${e.src} - ${e.dest}). Creates a cycle!`, "danger");
+                }
+
+                // Update UI
+                stateDiv.innerHTML = `<h3>Union-Find Table</h3>${uf.renderHTML()}`;
+                document.getElementById('statCost').innerText = mstCost;
+                document.getElementById('statSelected').innerText = selectedEdges;
+                document.getElementById('statRem').innerText = edges.length - (i+1);
+                document.getElementById('statCycles').innerText = cycles;
+
+                await sleep(getSpeed() / 2);
+                if(selectedEdges === graph.vertices - 1) {
+                    log("MST Complete! All vertices connected.", "success");
+                    // Mark remaining as rejected
+                    for(let j=i+1; j<edges.length; j++) {
+                        graph.edges[edges[j].idx].state = 'rejected';
+                        metrics.kruskal.rejected++;
+                    }
+                    document.getElementById('statRem').innerText = 0;
+                    break;
+                }
+            }
+            
+            const t1 = performance.now();
+            metrics.kruskal.cost = mstCost;
+            metrics.kruskal.edges = selectedEdges;
+            metrics.kruskal.time = t1 - t0;
+            metrics.kruskal.completed = true;
+
+            document.getElementById('k-cost').innerText = mstCost;
+            document.getElementById('k-edges').innerText = selectedEdges;
+            document.getElementById('k-time').innerText = (t1-t0).toFixed(2) + " ms";
+            document.getElementById('k-status').innerText = 'Completed';
+            document.getElementById('k-status').style.color = 'var(--success)';
+            
+            if(selectedEdges < graph.vertices -1) {
+                log("Graph is disconnected. MST cannot be formed.", "danger");
+            }
+            
+        } catch(err) {
+            if(err.message !== "Stopped") console.error(err);
+        }
+    }
+
+    async function executePrim() {
+        animState.currentAlgo = 'prim';
+        resetVisualState();
+        clearLog();
+        log("Starting Prim's Algorithm...", "info");
+        document.getElementById('p-status').innerText = 'Running...';
+        document.getElementById('p-status').style.color = 'var(--warning)';
+
+        const t0 = performance.now();
+        const V = graph.vertices;
+        let visited = new Array(V).fill(false);
+        let mstCost = 0, selectedEdges = 0;
+        let pq = []; // {cost, src, dest, edgeIdx}
+        const stateDiv = document.getElementById('algoStateContainer');
+        
+        // Start from node 0
+        visited[0] = true;
+        log("Started at Vertex 0", "info");
+
+        // Helper to add edges to PQ
+        const addEdges = (u) => {
+            for(let i=0; i<graph.edges.length; i++) {
+                let e = graph.edges[i];
+                if(e.src === u && !visited[e.dest]) pq.push({cost: e.weight, src: u, dest: e.dest, edgeIdx: i});
+                else if(e.dest === u && !visited[e.src]) pq.push({cost: e.weight, src: u, dest: e.src, edgeIdx: i});
+            }
+        };
+        
+        const renderPQ = () => {
+            let sorted = [...pq].sort((a,b)=>a.cost-b.cost);
+            let html = `<h3>Priority Queue (Min Edge)</h3><ul style="list-style:none; font-size:0.8rem;">`;
+            sorted.slice(0, 5).forEach((item, i) => {
+                html += `<li style="${i===0?'color:var(--success); font-weight:bold;':''}">( ${item.src} - ${item.dest} ) W: ${item.cost}</li>`;
+            });
+            if(sorted.length > 5) html += `<li>... ${sorted.length-5} more</li>`;
+            html += `</ul>`;
+            stateDiv.innerHTML = html;
+        };
+
+        try {
+            addEdges(0);
+            renderPQ();
+
+            while(pq.length > 0 && selectedEdges < V - 1) {
+                await checkPause();
+                
+                // Sort to get min (naive PQ for visualization ease)
+                pq.sort((a,b) => a.cost - b.cost);
+                let minEdge = pq.shift();
+                let e = graph.edges[minEdge.edgeIdx];
+                
+                if(e.state !== 'accepted' && e.state !== 'rejected') e.state = 'processing';
+                
+                renderPQ();
+                log(`Evaluating min edge from PQ: (${minEdge.src} - ${minEdge.dest}) weight: ${minEdge.cost}`);
+                await sleep(getSpeed());
+                await checkPause();
+
+                if(visited[minEdge.dest]) {
+                    if(e.state !== 'accepted') {
+                        e.state = 'rejected';
+                        log(`Rejected (${minEdge.src} - ${minEdge.dest}). Dest already visited.`, "danger");
+                    }
+                } else {
+                    e.state = 'accepted';
+                    visited[minEdge.dest] = true;
+                    mstCost += minEdge.cost;
+                    selectedEdges++;
+                    log(`Accepted (${minEdge.src} - ${minEdge.dest}). Added to MST.`, "success");
+                    
+                    document.getElementById('statCost').innerText = mstCost;
+                    document.getElementById('statSelected').innerText = selectedEdges;
+                    
+                    addEdges(minEdge.dest);
+                    renderPQ();
+                }
+                await sleep(getSpeed() / 2);
+            }
+
+            // Mark remaining normal as rejected
+            graph.edges.forEach(e => { if(e.state === 'normal') e.state = 'rejected'; });
+
+            const t1 = performance.now();
+            metrics.prim.cost = mstCost;
+            metrics.prim.edges = selectedEdges;
+            metrics.prim.time = t1 - t0;
+            metrics.prim.completed = true;
+
+            document.getElementById('p-cost').innerText = mstCost;
+            document.getElementById('p-edges').innerText = selectedEdges;
+            document.getElementById('p-time').innerText = (t1-t0).toFixed(2) + " ms";
+            document.getElementById('p-status').innerText = 'Completed';
+            document.getElementById('p-status').style.color = 'var(--success)';
+            
+            if(selectedEdges < V -1) log("Graph disconnected. MST incomplete.", "danger");
+            else log("Prim's MST Complete!", "success");
+
+        } catch(err) {
+            if(err.message !== "Stopped") console.error(err);
+        }
+    }
+
+    // --- Charts ---
+    function initCharts() {
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+        const ctxTime = document.getElementById('timeChart').getContext('2d');
+        timeChart = new Chart(ctxTime, {
+            type: 'bar',
+            data: {
+                labels: ['Kruskal', 'Prim'],
+                datasets: [{
+                    label: 'Execution Time (ms)',
+                    data: [0, 0],
+                    backgroundColor: ['#6366f1', '#ec4899'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, title: { display: true, text: 'Execution Time Comparison' } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['Accepted Edges', 'Rejected Edges'],
+                datasets: [{
+                    data: [1, 1],
+                    backgroundColor: ['#10b981', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { title: { display: true, text: 'Kruskal Edge Processing' } }
+            }
+        });
+    }
+
+    function updateCharts() {
+        if(metrics.kruskal.completed || metrics.prim.completed) {
+            timeChart.data.datasets[0].data = [metrics.kruskal.time, metrics.prim.time];
+            timeChart.update();
+        }
+        if(metrics.kruskal.completed) {
+            pieChart.data.datasets[0].data = [metrics.kruskal.accepted, metrics.kruskal.rejected];
+            pieChart.update();
+        }
+    }
+
+    function updateChartColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const color = isDark ? '#94a3b8' : '#475569';
+        Chart.defaults.color = color;
+        if(timeChart) timeChart.update();
+        if(pieChart) pieChart.update();
+    }
+
+    // Start
+    window.onload = init;
+
+</script>
+</body>
+</html>
