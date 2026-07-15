@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>String Matching Algorithm Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            /* Dark Mode (Default) */
+            --bg-gradient: linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --viz-match: #10b981;
+            --viz-mismatch: #ef4444;
+            --viz-active: #3b82f6;
+            --input-bg: rgba(0, 0, 0, 0.2);
+            --input-border: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="light"] {
+            --bg-gradient: linear-gradient(135deg, #f8fafc, #e2e8f0, #f1f5f9);
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --card-border: rgba(0, 0, 0, 0.1);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Glassmorphism Cards */
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header-titles h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-titles p { color: var(--text-muted); font-size: 1rem; }
+        .header-titles .badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Buttons & Inputs */
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.2rem;
+            font-weight: 600;
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        button:hover { background: var(--card-border); transform: translateY(-1px); }
+        button.primary { background: var(--primary); color: white; border: none; }
+        button.primary:hover { background: var(--primary-hover); }
+
+        input, textarea, select {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-main);
+            padding: 0.75rem;
+            border-radius: 8px;
+            outline: none;
+        }
+        input:focus, textarea:focus { border-color: var(--primary); }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* Layout Grids */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .grid-6 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+
+        /* Stats Panel */
+        .stat-box { text-align: center; padding: 1rem; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; color: var(--primary); }
+
+        /* Output Cards */
+        .algo-card { display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .algo-card h3 { font-size: 1.2rem; margin-bottom: 1rem; display: flex; justify-content: space-between; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--text-muted); display: inline-block; }
+        .status-dot.success { background: var(--success); box-shadow: 0 0 10px var(--success); }
+        .status-dot.fail { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        
+        .metric-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; border-bottom: 1px solid var(--card-border); padding-bottom: 0.25rem;}
+        .metric-label { color: var(--text-muted); font-size: 0.9rem; }
+        .metric-val { font-weight: 600; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--card-border); }
+        th { color: var(--text-muted); font-weight: 600; }
+        .highlight-win { background: rgba(16, 185, 129, 0.1); color: var(--success); font-weight: 700; border-radius: 4px; }
+
+        /* Live Visualization Area */
+        .viz-controls { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+        .viz-canvas { font-family: 'Fira Code', monospace; font-size: 1.25rem; letter-spacing: 0.2em; overflow-x: auto; padding: 1rem; background: var(--input-bg); border-radius: 8px; position: relative; min-height: 150px; }
+        .viz-row { display: flex; margin-bottom: 0.5rem; }
+        .viz-char { display: inline-flex; justify-content: center; align-items: center; width: 30px; height: 35px; border-bottom: 2px solid transparent; }
+        .viz-char.active { border-bottom-color: var(--viz-active); color: var(--viz-active); }
+        .viz-char.match { color: var(--viz-match); background: rgba(16, 185, 129, 0.1); font-weight: bold; }
+        .viz-char.mismatch { color: var(--viz-mismatch); background: rgba(239, 68, 68, 0.1); }
+        .viz-pointer-row { display: flex; font-size: 0.8rem; color: var(--text-muted); margin-top: -5px; margin-bottom: 10px; }
+        .viz-lps-box, .viz-hash-box { margin-top: 1rem; font-family: monospace; font-size: 0.9rem; color: var(--text-muted); }
+
+        .slider-container { display: flex; align-items: center; gap: 0.5rem; }
+        input[type="range"] { accent-color: var(--primary); }
+
+        /* Charts */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+<div class="container">
+    
+    <!-- HEADER -->
+    <header>
+        <div class="header-titles">
+            <span class="badge">Experiment No. 2</span>
+            <h1>Algorithm Simulator</h1>
+            <p>Comparative Analysis of Naive, Rabin-Karp, and KMP Algorithms for String Matching</p>
+            <p style="font-size: 0.85rem; margin-top: 0.2rem;">Compare algorithms using real-time execution. Press <kbd>Ctrl+Enter</kbd> to run.</p>
+        </div>
+        <div>
+            <button onclick="toggleTheme()" id="themeBtn">☀️ Light Mode</button>
+        </div>
+    </header>
+
+    <!-- STATS PANEL -->
+    <div class="glass grid-6" id="statsPanel">
+        <div class="stat-box"><div class="stat-label">Total Characters</div><div class="stat-value" id="st-chars">0</div></div>
+        <div class="stat-box"><div class="stat-label">Pattern Length</div><div class="stat-value" id="st-patlen">0</div></div>
+        <div class="stat-box"><div class="stat-label">Algos Executed</div><div class="stat-value" id="st-exec">0</div></div>
+        <div class="stat-box"><div class="stat-label">Matches Found</div><div class="stat-value" id="st-matches">0</div></div>
+        <div class="stat-box"><div class="stat-label">Fastest Algo</div><div class="stat-value" id="st-fastest">-</div></div>
+        <div class="stat-box"><div class="stat-label">Most Efficient</div><div class="stat-value" id="st-efficient">-</div></div>
+    </div>
+
+    <!-- INPUT PANEL -->
+    <div class="glass">
+        <div class="grid-2">
+            <div>
+                <label class="metric-label" style="display:block; margin-bottom:0.5rem;">Text</label>
+                <textarea id="txtInput" placeholder="Enter source text here..."></textarea>
+            </div>
+            <div>
+                <label class="metric-label" style="display:block; margin-bottom:0.5rem;">Pattern</label>
+                <input type="text" id="patInput" placeholder="Enter pattern to find...">
+                
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                    <button onclick="loadSample()">Load Sample</button>
+                    <button onclick="generateRandomText()">Generate Random 10K</button>
+                    <button onclick="clearInputs()">Clear</button>
+                    <button class="primary" onclick="runComparison()" style="margin-left: auto;">Run Comparison</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTPUT CARDS -->
+    <div class="grid-3" id="outputCards" style="display: none;">
+        <!-- Naive -->
+        <div class="glass algo-card" id="card-naive">
+            <h3>Naive Search <span class="status-dot" id="dot-naive"></span></h3>
+            <div class="metric-row"><span class="metric-label">Status</span><span class="metric-val" id="stat-naive">-</span></div>
+            <div class="metric-row"><span class="metric-label">Matches</span><span class="metric-val" id="mat-naive">-</span></div>
+            <div class="metric-row"><span class="metric-label">Positions</span><span class="metric-val" id="pos-naive">-</span></div>
+            <div class="metric-row"><span class="metric-label">Comparisons</span><span class="metric-val" id="cmp-naive">-</span></div>
+            <div class="metric-row"><span class="metric-label">Exec Time (ms)</span><span class="metric-val" id="time-naive">-</span></div>
+            <div class="metric-row"><span class="metric-label">Best Case</span><span class="metric-val">O(n)</span></div>
+            <div class="metric-row" style="border:none;"><span class="metric-label">Worst Case</span><span class="metric-val">O(n × m)</span></div>
+        </div>
+        <!-- Rabin-Karp -->
+        <div class="glass algo-card" id="card-rk">
+            <h3>Rabin-Karp <span class="status-dot" id="dot-rk"></span></h3>
+            <div class="metric-row"><span class="metric-label">Status</span><span class="metric-val" id="stat-rk">-</span></div>
+            <div class="metric-row"><span class="metric-label">Matches</span><span class="metric-val" id="mat-rk">-</span></div>
+            <div class="metric-row"><span class="metric-label">Positions</span><span class="metric-val" id="pos-rk">-</span></div>
+            <div class="metric-row"><span class="metric-label">Comparisons</span><span class="metric-val" id="cmp-rk">-</span></div>
+            <div class="metric-row"><span class="metric-label">Exec Time (ms)</span><span class="metric-val" id="time-rk">-</span></div>
+            <div class="metric-row"><span class="metric-label">Best Case</span><span class="metric-val">O(n + m)</span></div>
+            <div class="metric-row" style="border:none;"><span class="metric-label">Worst Case</span><span class="metric-val">O(n × m)</span></div>
+        </div>
+        <!-- KMP -->
+        <div class="glass algo-card" id="card-kmp">
+            <h3>KMP <span class="status-dot" id="dot-kmp"></span></h3>
+            <div class="metric-row"><span class="metric-label">Status</span><span class="metric-val" id="stat-kmp">-</span></div>
+            <div class="metric-row"><span class="metric-label">Matches</span><span class="metric-val" id="mat-kmp">-</span></div>
+            <div class="metric-row"><span class="metric-label">Positions</span><span class="metric-val" id="pos-kmp">-</span></div>
+            <div class="metric-row"><span class="metric-label">Comparisons</span><span class="metric-val" id="cmp-kmp">-</span></div>
+            <div class="metric-row"><span class="metric-label">Exec Time (ms)</span><span class="metric-val" id="time-kmp">-</span></div>
+            <div class="metric-row"><span class="metric-label">Best Case</span><span class="metric-val">O(n)</span></div>
+            <div class="metric-row" style="border:none;"><span class="metric-label">Worst Case</span><span class="metric-val">O(n)</span></div>
+        </div>
+    </div>
+
+    <!-- COMPARISON & CHARTS -->
+    <div class="grid-2" id="chartsSection" style="display: none;">
+        <div class="glass">
+            <h3 style="margin-bottom: 1rem;">Comparison Table</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Algorithm</th>
+                        <th>Matches</th>
+                        <th>Comparisons</th>
+                        <th>Time (ms)</th>
+                    </tr>
+                </thead>
+                <tbody id="compTableBody"></tbody>
+            </table>
+        </div>
+        <div class="glass">
+            <h3 style="margin-bottom: 1rem;">Performance Charts</h3>
+            <div class="chart-container"><canvas id="perfChart"></canvas></div>
+        </div>
+    </div>
+
+    <!-- LIVE VISUALIZATION -->
+    <div class="glass" id="vizSection" style="display: none;">
+        <h3 style="margin-bottom: 1rem;">Live Visualization</h3>
+        <div class="viz-controls">
+            <select id="vizAlgoSelect">
+                <option value="naive">Naive</option>
+                <option value="rk">Rabin-Karp</option>
+                <option value="kmp">KMP</option>
+            </select>
+            <button onclick="vizPlay()">▶ Play</button>
+            <button onclick="vizPause()">⏸ Pause</button>
+            <button onclick="vizReset()">⏹ Reset</button>
+            <div class="slider-container">
+                <label style="font-size: 0.8rem;">Speed</label>
+                <input type="range" id="vizSpeed" min="50" max="1000" value="400" dir="rtl">
+            </div>
+            <span id="vizStatusTxt" style="margin-left: auto; color: var(--text-muted); font-size: 0.9rem;">Ready</span>
+        </div>
+        <div class="viz-canvas" id="vizCanvas">
+            <!-- Rendered by JS -->
+        </div>
+        <div id="vizExtraInfo" class="viz-lps-box"></div>
+    </div>
+
+    <!-- PERFORMANCE TEST -->
+    <div class="glass">
+        <h3 style="margin-bottom: 1rem;">Large Dataset Performance Benchmarking</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">Automatically generates 10,000 characters and tests multiple pattern lengths.</p>
+        <button class="primary" onclick="runLargeTest()">Run Large Dataset Test</button>
+        
+        <div id="largeTestResults" style="display:none; margin-top: 1.5rem;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pattern Length</th>
+                        <th colspan="2">Naive</th>
+                        <th colspan="2">Rabin-Karp</th>
+                        <th colspan="2">KMP</th>
+                    </tr>
+                    <tr>
+                        <th></th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Time (ms)</th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Comps</th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Time (ms)</th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Comps</th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Time (ms)</th>
+                        <th style="font-size:0.8rem; color:var(--text-muted)">Comps</th>
+                    </tr>
+                </thead>
+                <tbody id="largeTestBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- Theme Management ---
+    function toggleTheme() {
+        const body = document.body;
+        const btn = document.getElementById("themeBtn");
+        if(body.getAttribute("data-theme") === "dark") {
+            body.setAttribute("data-theme", "light");
+            btn.innerText = "🌙 Dark Mode";
+        } else {
+            body.setAttribute("data-theme", "dark");
+            btn.innerText = "☀️ Light Mode";
+        }
+        if (chartInst) {
+            updateChartTheme();
+        }
+    }
+
+    // --- Input Management ---
+    function loadSample() {
+        document.getElementById('txtInput').value = "AABAACAADAABAABA";
+        document.getElementById('patInput').value = "AABA";
+    }
+
+    function generateRandomText() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let res = '';
+        for(let i=0; i<10000; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+        document.getElementById('txtInput').value = res;
+    }
+
+    function generateRandomPattern(len) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let res = '';
+        for(let i=0; i<len; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+        return res;
+    }
+
+    function clearInputs() {
+        document.getElementById('txtInput').value = "";
+        document.getElementById('patInput').value = "";
+        document.getElementById('outputCards').style.display = 'none';
+        document.getElementById('chartsSection').style.display = 'none';
+        document.getElementById('vizSection').style.display = 'none';
+        document.getElementById('largeTestResults').style.display = 'none';
+        resetStats();
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && event.key === 'Enter') {
+            runComparison();
+        }
+    });
+
+    // --- Core Algorithms ---
+    function runNaive(text, pat) {
+        let comps = 0, matches = [];
+        let n = text.length, m = pat.length;
+        let t0 = performance.now();
+        if(m === 0 || n < m) return { matches, comps, time: 0 };
+
+        for(let i = 0; i <= n - m; i++) {
+            let j = 0;
+            for(j = 0; j < m; j++) {
+                comps++;
+                if(text[i+j] !== pat[j]) break;
+            }
+            if(j === m) matches.push(i);
+        }
+        return { matches, comps, time: performance.now() - t0 };
+    }
+
+    function runRabinKarp(text, pat) {
+        let comps = 0, matches = [];
+        let n = text.length, m = pat.length;
+        let t0 = performance.now();
+        if(m === 0 || n < m) return { matches, comps, time: 0 };
+
+        let d = 256, q = 101;
+        let pHash = 0, tHash = 0, h = 1;
+
+        for(let i = 0; i < m - 1; i++) h = (h * d) % q;
+        for(let i = 0; i < m; i++) {
+            pHash = (d * pHash + pat.charCodeAt(i)) % q;
+            tHash = (d * tHash + text.charCodeAt(i)) % q;
+        }
+
+        for(let i = 0; i <= n - m; i++) {
+            if(pHash === tHash) {
+                let j = 0;
+                for(j = 0; j < m; j++) {
+                    comps++;
+                    if(text[i+j] !== pat[j]) break;
+                }
+                if(j === m) matches.push(i);
+            }
+            if(i < n - m) {
+                tHash = (d * (tHash - text.charCodeAt(i) * h) + text.charCodeAt(i + m)) % q;
+                if(tHash < 0) tHash = tHash + q;
+            }
+        }
+        return { matches, comps, time: performance.now() - t0 };
+    }
+
+    function buildLPS(pat, m) {
+        let lps = new Array(m).fill(0);
+        let len = 0, i = 1;
+        while(i < m) {
+            if(pat[i] === pat[len]) {
+                len++; lps[i] = len; i++;
+            } else {
+                if(len !== 0) len = lps[len-1];
+                else { lps[i] = 0; i++; }
+            }
+        }
+        return lps;
+    }
+
+    function runKMP(text, pat) {
+        let comps = 0, matches = [];
+        let n = text.length, m = pat.length;
+        let t0 = performance.now();
+        if(m === 0 || n < m) return { matches, comps, time: 0 };
+
+        let lps = buildLPS(pat, m);
+        let i = 0, j = 0;
+        
+        while(i < n) {
+            comps++;
+            if(pat[j] === text[i]) { i++; j++; }
+            if(j === m) {
+                matches.push(i - j);
+                j = lps[j - 1];
+            } else if (i < n && pat[j] !== text[i]) {
+                if(j !== 0) j = lps[j - 1];
+                else i++;
+            }
+        }
+        return { matches, comps, time: performance.now() - t0 };
+    }
+
+    // --- Execution & UI Update ---
+    let chartInst = null;
+    let lastResults = {};
+
+    function runComparison() {
+        const text = document.getElementById('txtInput').value;
+        const pat = document.getElementById('patInput').value;
+        
+        if(!text || !pat) {
+            alert("Please enter both text and pattern.");
+            return;
+        }
+
+        const resNaive = runNaive(text, pat);
+        const resRK = runRabinKarp(text, pat);
+        const resKMP = runKMP(text, pat);
+
+        lastResults = { 'Naive': resNaive, 'Rabin-Karp': resRK, 'KMP': resKMP };
+
+        document.getElementById('outputCards').style.display = 'grid';
+        document.getElementById('chartsSection').style.display = 'grid';
+        document.getElementById('vizSection').style.display = 'block';
+
+        updateCards(resNaive, resRK, resKMP);
+        updateTable(resNaive, resRK, resKMP);
+        updateStats(text.length, pat.length, resNaive, resRK, resKMP);
+        renderCharts(resNaive, resRK, resKMP);
+        
+        // Prepare visualizer
+        vizReset();
+    }
+
+    function formatPositions(arr) {
+        if(arr.length === 0) return "None";
+        if(arr.length <= 3) return arr.join(", ");
+        return `${arr[0]}, ${arr[1]}, ${arr[2]}... (+${arr.length - 3})`;
+    }
+
+    function updateCards(n, rk, kmp) {
+        const setCard = (prefix, res) => {
+            const found = res.matches.length > 0;
+            document.getElementById(`stat-${prefix}`).innerText = found ? "Found" : "Not Found";
+            document.getElementById(`stat-${prefix}`).style.color = found ? "var(--success)" : "var(--danger)";
+            document.getElementById(`dot-${prefix}`).className = `status-dot ${found ? 'success' : 'fail'}`;
+            document.getElementById(`mat-${prefix}`).innerText = res.matches.length;
+            document.getElementById(`pos-${prefix}`).innerText = formatPositions(res.matches);
+            document.getElementById(`cmp-${prefix}`).innerText = res.comps;
+            document.getElementById(`time-${prefix}`).innerText = res.time.toFixed(4);
+        };
+        setCard('naive', n); setCard('rk', rk); setCard('kmp', kmp);
+    }
+
+    function updateTable(n, rk, kmp) {
+        const tbody = document.getElementById('compTableBody');
+        const minTime = Math.min(n.time, rk.time, kmp.time);
+        const minComps = Math.min(n.comps, rk.comps, kmp.comps);
+
+        const buildRow = (name, res) => {
+            const timeClass = res.time === minTime ? 'highlight-win' : '';
+            const compClass = res.comps === minComps ? 'highlight-win' : '';
+            return `<tr>
+                <td>${name}</td>
+                <td>${res.matches.length}</td>
+                <td class="${compClass}">${res.comps}</td>
+                <td class="${timeClass}">${res.time.toFixed(4)}</td>
+            </tr>`;
+        };
+
+        tbody.innerHTML = buildRow('Naive', n) + buildRow('Rabin-Karp', rk) + buildRow('KMP', kmp);
+    }
+
+    function resetStats() {
+        document.getElementById('st-chars').innerText = "0";
+        document.getElementById('st-patlen').innerText = "0";
+        document.getElementById('st-exec').innerText = "0";
+        document.getElementById('st-matches').innerText = "0";
+        document.getElementById('st-fastest').innerText = "-";
+        document.getElementById('st-efficient').innerText = "-";
+    }
+
+    function updateStats(tLen, pLen, n, rk, kmp) {
+        document.getElementById('st-chars').innerText = tLen;
+        document.getElementById('st-patlen').innerText = pLen;
+        document.getElementById('st-exec').innerText = parseInt(document.getElementById('st-exec').innerText) + 3;
+        document.getElementById('st-matches').innerText = n.matches.length;
+
+        const times = { 'Naive': n.time, 'Rabin-Karp': rk.time, 'KMP': kmp.time };
+        const comps = { 'Naive': n.comps, 'Rabin-Karp': rk.comps, 'KMP': kmp.comps };
+        
+        const fastest = Object.keys(times).reduce((a, b) => times[a] < times[b] ? a : b);
+        const efficient = Object.keys(comps).reduce((a, b) => comps[a] < comps[b] ? a : b);
+
+        document.getElementById('st-fastest').innerText = fastest;
+        document.getElementById('st-efficient').innerText = efficient;
+    }
+
+    function renderCharts(n, rk, kmp) {
+        const ctx = document.getElementById('perfChart').getContext('2d');
+        if(chartInst) chartInst.destroy();
+
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#f8fafc' : '#0f172a';
+
+        chartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Naive', 'Rabin-Karp', 'KMP'],
+                datasets: [
+                    { label: 'Comparisons', data: [n.comps, rk.comps, kmp.comps], backgroundColor: '#3b82f6', yAxisID: 'y' },
+                    { label: 'Time (ms)', data: [n.time, rk.time, kmp.time], backgroundColor: '#10b981', yAxisID: 'y1' }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                color: textColor,
+                scales: {
+                    x: { ticks: { color: textColor } },
+                    y: { type: 'linear', display: true, position: 'left', title: {display: true, text: 'Comparisons', color: textColor}, ticks: {color: textColor} },
+                    y1: { type: 'linear', display: true, position: 'right', title: {display: true, text: 'Time (ms)', color: textColor}, grid: { drawOnChartArea: false }, ticks: {color: textColor} }
+                },
+                plugins: { legend: { labels: { color: textColor } } }
+            }
+        });
+    }
+
+    function updateChartTheme() {
+        if(!chartInst) return;
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#f8fafc' : '#0f172a';
+        chartInst.options.color = textColor;
+        chartInst.options.scales.x.ticks.color = textColor;
+        chartInst.options.scales.y.ticks.color = textColor;
+        chartInst.options.scales.y.title.color = textColor;
+        chartInst.options.scales.y1.ticks.color = textColor;
+        chartInst.options.scales.y1.title.color = textColor;
+        chartInst.options.plugins.legend.labels.color = textColor;
+        chartInst.update();
+    }
+
+    // --- Live Visualizer Engine ---
+    let vizState = { running: false, paused: false, text: "", pat: "", algo: "naive" };
+    
+    function getSleepTime() {
+        return parseInt(document.getElementById('vizSpeed').value);
+    }
+    
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    
+    async function checkPaused() {
+        while(vizState.paused && vizState.running) {
+            await sleep(100);
+        }
+    }
+
+    function initVizDOM() {
+        let text = document.getElementById('txtInput').value;
+        const pat = document.getElementById('patInput').value;
+        
+        // Limit visualizer length to prevent DOM lag
+        if(text.length > 60) {
+            text = text.substring(0, 60);
+            document.getElementById('vizStatusTxt').innerText = "Display limited to first 60 chars.";
+        } else {
+            document.getElementById('vizStatusTxt').innerText = "Ready";
+        }
+        
+        vizState.text = text; vizState.pat = pat;
+        
+        const canvas = document.getElementById('vizCanvas');
+        canvas.innerHTML = '';
+        
+        let txtRow = document.createElement('div');
+        txtRow.className = 'viz-row';
+        txtRow.id = 'viz-txt-row';
+        for(let i=0; i<text.length; i++) {
+            let span = document.createElement('span');
+            span.className = 'viz-char'; span.id = `t-${i}`; span.innerText = text[i];
+            txtRow.appendChild(span);
+        }
+        
+        let patRow = document.createElement('div');
+        patRow.className = 'viz-row';
+        patRow.id = 'viz-pat-row';
+        patRow.style.marginLeft = '0px';
+        for(let i=0; i<pat.length; i++) {
+            let span = document.createElement('span');
+            span.className = 'viz-char'; span.id = `p-${i}`; span.innerText = pat[i];
+            patRow.appendChild(span);
+        }
+        
+        canvas.appendChild(txtRow);
+        canvas.appendChild(patRow);
+        document.getElementById('vizExtraInfo').innerHTML = '';
+    }
+
+    function setVizMargin(index) {
+        document.getElementById('viz-pat-row').style.marginLeft = `${index * 30}px`; // 30px is char width
+    }
+    
+    function resetColors() {
+        document.querySelectorAll('.viz-char').forEach(el => {
+            el.classList.remove('active', 'match', 'mismatch');
+        });
+    }
+
+    function setCharState(type, tIdx, pIdx, state) {
+        if(tIdx !== null) {
+            let tEl = document.getElementById(`t-${tIdx}`);
+            if(tEl) {
+                tEl.classList.remove('active','match','mismatch');
+                if(state) tEl.classList.add(state);
+            }
+        }
+        if(pIdx !== null) {
+            let pEl = document.getElementById(`p-${pIdx}`);
+            if(pEl) {
+                pEl.classList.remove('active','match','mismatch');
+                if(state) pEl.classList.add(state);
+            }
+        }
+    }
+
+    async function runVizNaive() {
+        const { text, pat } = vizState;
+        let n = text.length, m = pat.length;
+        
+        for(let i = 0; i <= n - m; i++) {
+            if(!vizState.running) return;
+            setVizMargin(i);
+            resetColors();
+            let j = 0;
+            for(j = 0; j < m; j++) {
+                await checkPaused(); if(!vizState.running) return;
+                
+                setCharState('txt', i+j, j, 'active');
+                await sleep(getSleepTime());
+                
+                if(text[i+j] === pat[j]) {
+                    setCharState('txt', i+j, j, 'match');
+                } else {
+                    setCharState('txt', i+j, j, 'mismatch');
+                    await sleep(getSleepTime() / 2);
+                    break;
+                }
+            }
+            if(j === m) {
+                document.getElementById('vizStatusTxt').innerText = `Match found at index ${i}!`;
+                await sleep(1000);
+            }
+        }
+        document.getElementById('vizStatusTxt').innerText = `Simulation complete.`;
+        vizState.running = false;
+    }
+
+    async function runVizRK() {
+        const { text, pat } = vizState;
+        let n = text.length, m = pat.length;
+        let d = 256, q = 101;
+        let pHash = 0, tHash = 0, h = 1;
+
+        const info = document.getElementById('vizExtraInfo');
+
+        for(let i = 0; i < m - 1; i++) h = (h * d) % q;
+        for(let i = 0; i < m; i++) {
+            pHash = (d * pHash + pat.charCodeAt(i)) % q;
+            tHash = (d * tHash + text.charCodeAt(i)) % q;
+        }
+
+        info.innerHTML = `Pattern Hash: <strong>${pHash}</strong>`;
+
+        for(let i = 0; i <= n - m; i++) {
+            if(!vizState.running) return;
+            setVizMargin(i);
+            resetColors();
+            
+            // Highlight current window
+            for(let k=0; k<m; k++) setCharState('txt', i+k, null, 'active');
+            info.innerHTML = `Pattern Hash: <strong>${pHash}</strong> | Current Window Hash: <strong>${tHash}</strong>`;
+            
+            await sleep(getSleepTime());
+            await checkPaused(); if(!vizState.running) return;
+
+            if(pHash === tHash) {
+                info.innerHTML += ` <span style="color:var(--warning)">Collision! Verifying...</span>`;
+                let j = 0;
+                for(j = 0; j < m; j++) {
+                    await checkPaused(); if(!vizState.running) return;
+                    setCharState('txt', i+j, j, 'active');
+                    await sleep(getSleepTime());
+                    if(text[i+j] === pat[j]) {
+                        setCharState('txt', i+j, j, 'match');
+                    } else {
+                        setCharState('txt', i+j, j, 'mismatch');
+                        break;
+                    }
+                }
+                if(j === m) {
+                    document.getElementById('vizStatusTxt').innerText = `Match found at index ${i}!`;
+                    await sleep(1000);
+                }
+            } else {
+                for(let k=0; k<m; k++) setCharState('txt', i+k, null, 'mismatch');
+                await sleep(getSleepTime()/2);
+            }
+
+            if(i < n - m) {
+                tHash = (d * (tHash - text.charCodeAt(i) * h) + text.charCodeAt(i + m)) % q;
+                if(tHash < 0) tHash = tHash + q;
+            }
+        }
+        document.getElementById('vizStatusTxt').innerText = `Simulation complete.`;
+        vizState.running = false;
+    }
+
+    async function runVizKMP() {
+        const { text, pat } = vizState;
+        let n = text.length, m = pat.length;
+        const info = document.getElementById('vizExtraInfo');
+        
+        let lps = buildLPS(pat, m);
+        info.innerHTML = `LPS Array: [${lps.join(', ')}]`;
+
+        let i = 0, j = 0;
+        setVizMargin(0);
+
+        while(i < n) {
+            if(!vizState.running) return;
+            await checkPaused();
+
+            setCharState('txt', i, j, 'active');
+            await sleep(getSleepTime());
+            
+            if(pat[j] === text[i]) {
+                setCharState('txt', i, j, 'match');
+                i++; j++;
+            } else {
+                setCharState('txt', i, j, 'mismatch');
+                await sleep(getSleepTime());
+                if(j !== 0) {
+                    j = lps[j - 1];
+                    info.innerHTML = `LPS Array: [${lps.join(', ')}] | <span style="color:var(--warning)">Mismatch. Jump j to LPS[${j}]</span>`;
+                    setVizMargin(i - j);
+                    resetColors();
+                    // Keep previously matched active
+                    for(let k=0; k<j; k++) setCharState('txt', i-j+k, k, 'match');
+                } else {
+                    i++;
+                    setVizMargin(i);
+                    resetColors();
+                }
+            }
+            if(j === m) {
+                document.getElementById('vizStatusTxt').innerText = `Match found at index ${i - j}!`;
+                j = lps[j - 1];
+                await sleep(1000);
+                setVizMargin(i - j);
+                resetColors();
+            }
+        }
+        document.getElementById('vizStatusTxt').innerText = `Simulation complete.`;
+        vizState.running = false;
+    }
+
+    function vizPlay() {
+        if(vizState.running) {
+            vizState.paused = false;
+            document.getElementById('vizStatusTxt').innerText = "Running...";
+            return;
+        }
+        const text = document.getElementById('txtInput').value;
+        const pat = document.getElementById('patInput').value;
+        if(!text || !pat) return;
+
+        initVizDOM();
+        vizState.running = true;
+        vizState.paused = false;
+        vizState.algo = document.getElementById('vizAlgoSelect').value;
+        document.getElementById('vizStatusTxt').innerText = "Running...";
+
+        if(vizState.algo === 'naive') runVizNaive();
+        else if(vizState.algo === 'rk') runVizRK();
+        else if(vizState.algo === 'kmp') runVizKMP();
+    }
+
+    function vizPause() {
+        if(vizState.running) {
+            vizState.paused = true;
+            document.getElementById('vizStatusTxt').innerText = "Paused";
+        }
+    }
+
+    function vizReset() {
+        vizState.running = false;
+        vizState.paused = false;
+        initVizDOM();
+    }
+
+    document.getElementById('vizAlgoSelect').addEventListener('change', vizReset);
+
+
+    // --- Large Dataset Benchmark ---
+    function runLargeTest() {
+        const text = generateRandomPattern(10000); // 10k random A-Z
+        const lengths = [5, 10, 20, 50];
+        const tbody = document.getElementById('largeTestBody');
+        tbody.innerHTML = '';
+        document.getElementById('largeTestResults').style.display = 'block';
+
+        // Brief timeout to allow UI update before blocking thread
+        setTimeout(() => {
+            lengths.forEach(len => {
+                const pat = generateRandomPattern(len);
+                
+                // Average over 5 runs for stabler timing
+                let nT = 0, nC = 0, rT = 0, rC = 0, kT = 0, kC = 0;
+                for(let i=0; i<5; i++) {
+                    let n = runNaive(text, pat); nT += n.time; nC = n.comps;
+                    let r = runRabinKarp(text, pat); rT += r.time; rC = r.comps;
+                    let k = runKMP(text, pat); kT += k.time; kC = k.comps;
+                }
+                nT/=5; rT/=5; kT/=5;
+                
+                const minTime = Math.min(nT, rT, kT);
+                
+                tbody.innerHTML += `<tr>
+                    <td style="font-weight:bold">${len}</td>
+                    <td class="${nT===minTime?'highlight-win':''}">${nT.toFixed(2)}</td>
+                    <td>${nC}</td>
+                    <td class="${rT===minTime?'highlight-win':''}">${rT.toFixed(2)}</td>
+                    <td>${rC}</td>
+                    <td class="${kT===minTime?'highlight-win':''}">${kT.toFixed(2)}</td>
+                    <td>${kC}</td>
+                </tr>`;
+            });
+        }, 50);
+    }
+
+</script>
+</body>
+</html>
