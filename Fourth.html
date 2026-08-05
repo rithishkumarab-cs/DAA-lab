@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Shortest Path Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root[data-theme="dark"] {
+            --bg-grad: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --node-bg: #1e293b;
+            --node-border: #3b82f6;
+            --edge-normal: #475569;
+            --edge-active: #f59e0b;
+            --edge-path: #10b981;
+            --panel-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        :root[data-theme="light"] {
+            --bg-grad: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --node-bg: #ffffff;
+            --node-border: #2563eb;
+            --edge-normal: #94a3b8;
+            --edge-active: #f59e0b;
+            --edge-path: #10b981;
+            --panel-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body {
+            background: var(--bg-grad);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: var(--panel-shadow);
+        }
+
+        header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            z-index: 10;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .theme-toggle {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .theme-toggle:hover {
+            background: var(--glass-border);
+        }
+
+        /* Dashboard Grid */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 1rem;
+            padding: 0 1rem 1rem 1rem;
+            flex: 1;
+        }
+
+        /* Panels */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .panel::-webkit-scrollbar { width: 6px; }
+        .panel::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+
+        h2, h3 { font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-main); border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; }
+        
+        /* Forms & Inputs */
+        .input-group { margin-bottom: 0.75rem; }
+        .input-group label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        input, select { width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.1); color: var(--text-main); font-size: 0.9rem; }
+        
+        .btn {
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            color: white;
+            background: var(--accent);
+            width: 100%;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn.secondary { background: transparent; border: 1px solid var(--accent); color: var(--accent); box-shadow: none; }
+        .btn.secondary:hover { background: var(--accent); color: white; }
+        .btn.danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        .btn.danger:hover { background: var(--danger); color: white; }
+        
+        .btn-row { display: flex; gap: 0.5rem; }
+        .btn-row .btn { margin-bottom: 0; }
+
+        /* Tables */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .data-table th, .data-table td { padding: 0.4rem; text-align: left; border-bottom: 1px solid var(--glass-border); }
+        .data-table th { color: var(--text-muted); }
+
+        /* Output Cards */
+        .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+        .stat-card { background: rgba(0,0,0,0.1); padding: 0.75rem; border-radius: 8px; border-left: 3px solid var(--accent); }
+        .stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+        .stat-value { font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-top: 0.25rem; }
+
+        /* Center Panel - Visualization */
+        .center-panel { display: flex; flex-direction: column; gap: 1rem; }
+        .canvas-wrapper { flex: 1; position: relative; border-radius: 12px; overflow: hidden; min-height: 400px; }
+        canvas { width: 100%; height: 100%; display: block; cursor: grab; background: rgba(0,0,0,0.05); }
+        canvas:active { cursor: grabbing; }
+        
+        .controls-overlay { position: absolute; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; z-index: 10; background: var(--glass-bg); padding: 0.5rem; border-radius: 8px; border: 1px solid var(--glass-border); }
+        
+        /* Bottom Center Arrays/Logs */
+        .live-state-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; height: 200px; }
+        .log-container { overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.8rem; padding: 0.5rem; }
+        .log-entry { padding: 0.25rem 0; border-bottom: 1px dashed var(--glass-border); }
+        
+        .array-view { display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; padding: 0.5rem; }
+        .array-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 0.25rem; background: rgba(0,0,0,0.1); border-radius: 4px; }
+        
+        /* Charts Container */
+        .chart-box { height: 200px; margin-bottom: 1rem; position: relative; }
+
+        /* Path Highlighter Panel */
+        .path-highlighter { background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); padding: 1rem; border-radius: 8px; margin-top: 1rem; display: none;}
+        .path-highlighter h3 { color: var(--success); border-color: var(--success); }
+
+        @media (max-width: 1200px) {
+            .dashboard { grid-template-columns: 300px 1fr; }
+            .right-panel { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .right-panel { grid-column: 1; grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="glass">
+        <h1>Dijkstra's Shortest Path Simulator</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn"><i class="fas fa-sun"></i> Light Mode</button>
+    </header>
+
+    <div class="dashboard">
+        <!-- LEFT PANEL: Inputs & Controls -->
+        <aside class="panel glass">
+            <h2>Graph Input</h2>
+            <div class="input-group">
+                <label>Number of Vertices</label>
+                <div class="btn-row">
+                    <input type="number" id="numVertices" value="6" min="2" max="20">
+                    <button class="btn secondary" style="width: auto;" onclick="updateVertices()">Update</button>
+                </div>
+            </div>
+
+            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 1rem;">
+                <table class="data-table" id="edgeTable">
+                    <thead>
+                        <tr><th>Src</th><th>Dest</th><th>Weight</th><th>Act</th></tr>
+                    </thead>
+                    <tbody>
+                        <!-- Edges populated here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button class="btn secondary" onclick="addEdgeRow()"><i class="fas fa-plus"></i> Add Edge</button>
+            
+            <div class="btn-row" style="margin-top: 1rem;">
+                <button class="btn" onclick="loadSampleGraph()"><i class="fas fa-folder-open"></i> Sample</button>
+                <button class="btn" onclick="generateRandomGraph()"><i class="fas fa-random"></i> Random</button>
+                <button class="btn danger" onclick="clearGraph()"><i class="fas fa-trash"></i> Clear</button>
+            </div>
+
+            <h2 style="margin-top: 1rem;">Run Controls</h2>
+            <div class="input-group">
+                <label>Source Vertex</label>
+                <select id="sourceVertex"></select>
+            </div>
+            
+            <div class="input-group" style="margin: 1rem 0;">
+                <label>Animation Speed</label>
+                <input type="range" id="animSpeed" min="50" max="2000" value="800" dir="rtl">
+            </div>
+
+            <button class="btn" onclick="startDijkstra(false)" id="btnRun"><i class="fas fa-play"></i> Auto Play</button>
+            <button class="btn secondary" onclick="startDijkstra(true)" id="btnStep"><i class="fas fa-step-forward"></i> Step-by-Step</button>
+            
+            <div class="btn-row">
+                <button class="btn secondary" onclick="togglePause()" id="btnPause"><i class="fas fa-pause"></i> Pause</button>
+                <button class="btn danger" onclick="resetSimulator()"><i class="fas fa-undo"></i> Reset</button>
+            </div>
+            
+            <div class="path-highlighter" id="pathHighlighter">
+                <h3><i class="fas fa-route"></i> Path Highlighter</h3>
+                <p style="font-size: 0.8rem; margin-bottom: 0.5rem; color: var(--text-muted);">Click a node on the canvas to view its shortest path.</p>
+                <div class="stat-label">Destination</div><div class="stat-value" id="ph-dest" style="font-size:1rem;">-</div>
+                <div class="stat-label" style="margin-top:0.5rem;">Total Distance</div><div class="stat-value" id="ph-dist" style="font-size:1rem; color:var(--success);">-</div>
+                <div class="stat-label" style="margin-top:0.5rem;">Sequence</div><div class="stat-value" id="ph-seq" style="font-size:0.9rem;">-</div>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Visualization -->
+        <main class="center-panel">
+            <div class="canvas-wrapper glass" id="canvasContainer">
+                <canvas id="graphCanvas"></canvas>
+                <div class="controls-overlay">
+                    <button class="btn secondary" style="padding: 0.25rem 0.5rem; margin:0;" onclick="zoomIn()"><i class="fas fa-search-plus"></i></button>
+                    <button class="btn secondary" style="padding: 0.25rem 0.5rem; margin:0;" onclick="zoomOut()"><i class="fas fa-search-minus"></i></button>
+                    <button class="btn secondary" style="padding: 0.25rem 0.5rem; margin:0;" onclick="resetView()"><i class="fas fa-compress"></i></button>
+                </div>
+            </div>
+
+            <div class="live-state-panel">
+                <div class="glass panel" style="height: 100%;">
+                    <h3><i class="fas fa-list-ol"></i> Live State Array</h3>
+                    <div class="array-view" id="liveArrays">
+                        <p style="color:var(--text-muted); font-size:0.8rem;">Run algorithm to view Distances and Previous nodes.</p>
+                    </div>
+                </div>
+                <div class="glass panel" style="height: 100%;">
+                    <h3><i class="fas fa-terminal"></i> Step Log</h3>
+                    <div class="log-container" id="stepLog">
+                        <div class="log-entry" style="color:var(--accent);">Simulator ready.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="glass panel" style="height: auto; max-height: 250px;">
+                <h3><i class="fas fa-table"></i> Shortest Path Table</h3>
+                <table class="data-table" id="shortestPathTable">
+                    <thead><tr><th>Dest</th><th>Distance</th><th>Complete Path</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL: Stats & Charts -->
+        <aside class="panel glass right-panel">
+            <h2>Output Panel</h2>
+            <div class="card-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Source</div>
+                    <div class="stat-value" id="statSource">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value" id="statAlgoStatus" style="font-size:0.9rem; color:var(--warning);">Idle</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Visited</div>
+                    <div class="stat-value" id="statVisited">0 / 0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Exec Time</div>
+                    <div class="stat-value" id="statTime">0 ms</div>
+                </div>
+            </div>
+
+            <h2>Performance Metrics</h2>
+            <div class="card-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Relaxations</div>
+                    <div class="stat-value" id="statRelax">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PQ Operations</div>
+                    <div class="stat-value" id="statPQ">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Edges / Vertices</div>
+                    <div class="stat-value" id="statGraphSize">0 / 0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Paths Found</div>
+                    <div class="stat-value" id="statPaths">0</div>
+                </div>
+            </div>
+
+            <h2>Charts</h2>
+            <div class="chart-box"><canvas id="distChart"></canvas></div>
+            <div class="chart-box"><canvas id="relaxChart"></canvas></div>
+        </aside>
+    </div>
+
+<script>
+    // --- Global State ---
+    let graph = { V: 6, nodes: [], edges: [] };
+    let animState = { running: false, paused: false, stepMode: false, resolveStep: null };
+    let dijkstraState = { dist: [], prev: [], visited: [], pq: [], relaxations: [] };
+    let canvasTransform = { x: 0, y: 0, scale: 1 };
+    
+    // Canvas interaction
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDragging = null, isPanning = false, startPan = {x:0, y:0};
+    
+    // Charts
+    let distChartObj = null, relaxChartObj = null;
+
+    // --- Initialization ---
+    function init() {
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        setupCanvasEvents();
+        initCharts();
+        loadSampleGraph();
+        requestAnimationFrame(renderLoop);
+    }
+
+    function toggleTheme() {
+        const root = document.documentElement;
+        const btn = document.getElementById('themeBtn');
+        if(root.getAttribute('data-theme') === 'dark') {
+            root.setAttribute('data-theme', 'light');
+            btn.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+        } else {
+            root.setAttribute('data-theme', 'dark');
+            btn.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+        }
+        updateChartThemes();
+    }
+
+    // --- Graph Data Management ---
+    function updateVertices() {
+        let v = parseInt(document.getElementById('numVertices').value);
+        if(v < 2 || v > 20) return alert("Vertices must be between 2 and 20");
+        graph.V = v;
+        graph.edges = graph.edges.filter(e => e.u < v && e.v < v);
+        generateNodePositions(v);
+        updateSourceSelector();
+        refreshEdgeTable();
+        resetSimulator();
+    }
+
+    function generateNodePositions(v) {
+        graph.nodes = [];
+        const cx = canvas.width/2 || 400, cy = canvas.height/2 || 300;
+        const r = Math.min(cx, cy) - 60;
+        for(let i=0; i<v; i++) {
+            let angle = (i / v) * 2 * Math.PI - Math.PI/2;
+            graph.nodes.push({ id: i, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), state: 'normal' });
+        }
+    }
+
+    function loadSampleGraph() {
+        graph.V = 6;
+        document.getElementById('numVertices').value = 6;
+        
+        // Specific nice layout for sample
+        const cx = canvas.width/2 || 400, cy = canvas.height/2 || 300;
+        graph.nodes = [
+            { id: 0, x: cx - 200, y: cy, state: 'normal' },
+            { id: 1, x: cx, y: cy - 100, state: 'normal' },
+            { id: 2, x: cx, y: cy + 100, state: 'normal' },
+            { id: 3, x: cx + 150, y: cy - 50, state: 'normal' },
+            { id: 4, x: cx + 250, y: cy + 50, state: 'normal' },
+            { id: 5, x: cx + 350, y: cy, state: 'normal' }
+        ];
+
+        graph.edges = [
+            { u: 0, v: 1, w: 4, state: 'normal' },
+            { u: 0, v: 2, w: 1, state: 'normal' },
+            { u: 2, v: 1, w: 2, state: 'normal' },
+            { u: 1, v: 3, w: 1, state: 'normal' },
+            { u: 2, v: 3, w: 5, state: 'normal' },
+            { u: 3, v: 4, w: 3, state: 'normal' },
+            { u: 4, v: 5, w: 2, state: 'normal' }
+        ];
+        
+        updateSourceSelector();
+        document.getElementById('sourceVertex').value = 0;
+        refreshEdgeTable();
+        resetSimulator();
+        log("Sample graph loaded.", "info");
+    }
+
+    function generateRandomGraph() {
+        let v = parseInt(document.getElementById('numVertices').value) || Math.floor(Math.random()*5 + 5);
+        document.getElementById('numVertices').value = v;
+        graph.V = v;
+        generateNodePositions(v);
+        
+        graph.edges = [];
+        // Ensure some connectivity
+        for(let i=1; i<v; i++) {
+            let u = Math.floor(Math.random() * i);
+            graph.edges.push({ u: u, v: i, w: Math.floor(Math.random()*10 + 1), state: 'normal' });
+        }
+        // Add random edges
+        let extra = v;
+        for(let i=0; i<extra; i++) {
+            let u = Math.floor(Math.random()*v);
+            let v_node = Math.floor(Math.random()*v);
+            if(u !== v_node && !graph.edges.find(e => e.u === u && e.v === v_node)) {
+                graph.edges.push({ u, v: v_node, w: Math.floor(Math.random()*10 + 1), state: 'normal' });
+            }
+        }
+        updateSourceSelector();
+        refreshEdgeTable();
+        resetSimulator();
+        log("Random graph generated.", "info");
+    }
+
+    function clearGraph() {
+        graph.edges = [];
+        refreshEdgeTable();
+        resetSimulator();
+        log("Graph cleared.", "warning");
+    }
+
+    function updateSourceSelector() {
+        let sel = document.getElementById('sourceVertex');
+        let html = '';
+        for(let i=0; i<graph.V; i++) {
+            html += `<option value="${i}">Vertex ${i}</option>`;
+        }
+        sel.innerHTML = html;
+    }
+
+    // --- Edge Table ---
+    function refreshEdgeTable() {
+        const tbody = document.querySelector('#edgeTable tbody');
+        let html = '';
+        graph.edges.forEach((e, i) => {
+            html += `
+                <tr>
+                    <td><input type="number" value="${e.u}" min="0" max="${graph.V-1}" onchange="updateEdge(${i}, 'u', this.value)" style="padding:0.2rem;"></td>
+                    <td><input type="number" value="${e.v}" min="0" max="${graph.V-1}" onchange="updateEdge(${i}, 'v', this.value)" style="padding:0.2rem;"></td>
+                    <td><input type="number" value="${e.w}" min="1" onchange="updateEdge(${i}, 'w', this.value)" style="padding:0.2rem;"></td>
+                    <td><button class="btn danger" style="padding: 0.2rem 0.5rem; margin:0;" onclick="deleteEdge(${i})"><i class="fas fa-times"></i></button></td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+        document.getElementById('statGraphSize').innerText = `${graph.edges.length} / ${graph.V}`;
+    }
+
+    window.updateEdge = function(idx, prop, val) {
+        val = parseInt(val);
+        if(prop !== 'w' && (val < 0 || val >= graph.V)) return alert("Invalid vertex");
+        graph.edges[idx][prop] = val;
+        resetSimulator();
+    }
+    window.deleteEdge = function(idx) { graph.edges.splice(idx,1); refreshEdgeTable(); resetSimulator(); }
+    window.addEdgeRow = function() { graph.edges.push({u:0, v:1, w:1, state:'normal'}); refreshEdgeTable(); resetSimulator(); }
+
+    // --- Logging & UI Updates ---
+    function log(msg, type='normal') {
+        const logC = document.getElementById('stepLog');
+        let color = "var(--text-main)";
+        if(type === 'success') color = "var(--success)";
+        if(type === 'warning') color = "var(--warning)";
+        if(type === 'info') color = "var(--accent)";
+        
+        let div = document.createElement('div');
+        div.className = 'log-entry';
+        div.style.color = color;
+        div.innerText = '> ' + msg;
+        logC.appendChild(div);
+        
+        logC.scrollTop = logC.scrollHeight;
+    }
+
+    function updateLiveArrays() {
+        const c = document.getElementById('liveArrays');
+        let html = '';
+        for(let i=0; i<graph.V; i++) {
+            let d = (dijkstraState.dist[i] === undefined || dijkstraState.dist[i] === Infinity) ? '∞' : dijkstraState.dist[i];
+            let p = (dijkstraState.prev[i] === undefined || dijkstraState.prev[i] === null) ? '-' : dijkstraState.prev[i];
+            let bg = dijkstraState.visited[i] ? 'rgba(16, 185, 129, 0.2)' : 'rgba(0,0,0,0.1)';
+            html += `<div class="array-row" style="background:${bg}"><span>Vertex ${i}</span><span>Dist: ${d} | Prev: ${p}</span></div>`;
+        }
+        c.innerHTML = html;
+    }
+
+    function getPathSequence(dest) {
+        if(dijkstraState.dist[dest] === undefined || dijkstraState.dist[dest] === Infinity) return null;
+        let path = [];
+        let curr = dest;
+        while(curr !== null) {
+            if (path.includes(curr)) break; // Safety to prevent infinite loop on edge cases
+            path.unshift(curr);
+            curr = dijkstraState.prev[curr];
+        }
+        return path;
+    }
+
+    function updateShortestPathTable() {
+        const tbody = document.querySelector('#shortestPathTable tbody');
+        let html = '';
+        let pathsFound = 0;
+        
+        for(let i=0; i<graph.V; i++) {
+            let d = dijkstraState.dist[i];
+            let distStr = (d === undefined || d === Infinity) ? '∞' : d;
+            let path = getPathSequence(i);
+            let pathStr = path ? path.join(' → ') : '-';
+            let status = dijkstraState.visited[i] ? '<span style="color:var(--success)">Visited</span>' : 'Pending';
+            if(d !== undefined && d !== Infinity && d !== 0) pathsFound++;
+            
+            html += `<tr><td>${i}</td><td>${distStr}</td><td>${pathStr}</td><td>${status}</td></tr>`;
+        }
+        tbody.innerHTML = html;
+        document.getElementById('statPaths').innerText = pathsFound;
+        
+        let visitedCount = dijkstraState.visited && dijkstraState.visited.length > 0 ? dijkstraState.visited.filter(Boolean).length : 0;
+        document.getElementById('statVisited').innerText = `${visitedCount} / ${graph.V}`;
+    }
+
+    // --- Dijkstra Engine (Generator for Animation) ---
+    async function* dijkstraGenerator(source) {
+        let V = graph.V;
+        dijkstraState.dist = new Array(V).fill(Infinity);
+        dijkstraState.prev = new Array(V).fill(null);
+        dijkstraState.visited = new Array(V).fill(false);
+        dijkstraState.pq = [];
+        dijkstraState.relaxations = new Array(V).fill(0);
+        
+        let pqOps = 0;
+        let relaxOps = 0;
+
+        dijkstraState.dist[source] = 0;
+        dijkstraState.pq.push({ u: source, d: 0 });
+        pqOps++;
+        
+        log(`Initialized distances. Source = ${source}.`, "info");
+        yield { type: 'INIT' };
+
+        while(dijkstraState.pq.length > 0) {
+            // Sort to simulate Min-Priority Queue
+            dijkstraState.pq.sort((a,b) => a.d - b.d);
+            let { u, d } = dijkstraState.pq.shift();
+            pqOps++;
+
+            if(dijkstraState.visited[u]) continue;
+            
+            dijkstraState.visited[u] = true;
+            graph.nodes[u].state = 'current';
+            log(`Extracted Vertex ${u} from Priority Queue (Min Dist = ${d}).`, "info");
+            document.getElementById('statPQ').innerText = pqOps;
+            yield { type: 'EXTRACT', u };
+
+            // Find neighbors
+            let neighbors = graph.edges.filter(e => e.u === u);
+            for(let edge of neighbors) {
+                let v = edge.v;
+                if(dijkstraState.visited[v]) continue;
+
+                edge.state = 'relaxing';
+                graph.nodes[v].state = 'target';
+                log(`Evaluating edge ${u} → ${v} (Weight: ${edge.w})`);
+                yield { type: 'EVALUATE', u, v, edge };
+
+                let newDist = dijkstraState.dist[u] + edge.w;
+                relaxOps++;
+                dijkstraState.relaxations[v]++;
+                document.getElementById('statRelax').innerText = relaxOps;
+
+                if(newDist < dijkstraState.dist[v]) {
+                    log(`Relaxation successful! Dist[${v}] updated to ${newDist}.`, "success");
+                    dijkstraState.dist[v] = newDist;
+                    dijkstraState.prev[v] = u;
+                    dijkstraState.pq.push({ u: v, d: newDist });
+                    pqOps++;
+                    document.getElementById('statPQ').innerText = pqOps;
+                    edge.state = 'path'; // Temp highlight
+                    yield { type: 'RELAX_SUCCESS', u, v, edge };
+                } else {
+                    log(`Relaxation failed. ${newDist} >= ${dijkstraState.dist[v]}.`);
+                }
+                edge.state = 'normal';
+                graph.nodes[v].state = 'normal';
+            }
+            graph.nodes[u].state = 'visited';
+            updateShortestPathTable();
+            updateLiveArrays();
+        }
+        
+        log("Priority Queue empty. Algorithm completed.", "success");
+        yield { type: 'DONE' };
+    }
+
+    // --- Run Controls ---
+    async function startDijkstra(stepMode = false) {
+        if (stepMode && animState.running && animState.stepMode) {
+            // Advance next step if already in step mode
+            if(animState.resolveStep) animState.resolveStep();
+            return;
+        }
+
+        if (!stepMode && animState.running && animState.stepMode) {
+            // Switch back to Auto Play
+            animState.stepMode = false;
+            if(animState.resolveStep) animState.resolveStep();
+            document.getElementById('btnRun').innerHTML = '<i class="fas fa-play"></i> Running';
+            return;
+        }
+
+        if(animState.running) resetSimulator();
+        
+        let source = parseInt(document.getElementById('sourceVertex').value);
+        if(isNaN(source)) return alert("Select a valid source vertex");
+
+        animState.running = true;
+        animState.paused = false;
+        animState.stepMode = stepMode;
+        
+        document.getElementById('statSource').innerText = source;
+        document.getElementById('statAlgoStatus').innerText = "Running...";
+        document.getElementById('statAlgoStatus').style.color = "var(--accent)";
+        document.getElementById('btnRun').innerHTML = '<i class="fas fa-play"></i> Running';
+        
+        let t0 = performance.now();
+        let generator = dijkstraGenerator(source);
+        
+        document.getElementById('pathHighlighter').style.display = 'none';
+
+        while(true) {
+            if(!animState.running) break;
+            
+            // Handle Pause / Step
+            if(animState.paused || animState.stepMode) {
+                document.getElementById('statAlgoStatus').innerText = "Paused / Step Mode";
+                document.getElementById('btnPause').innerHTML = '<i class="fas fa-play"></i> Resume';
+                await new Promise(r => animState.resolveStep = r);
+                animState.resolveStep = null;
+                document.getElementById('statAlgoStatus').innerText = "Running...";
+                document.getElementById('btnPause').innerHTML = '<i class="fas fa-pause"></i> Pause';
+            }
+            
+            if(!animState.running) break; // Check again after await
+            
+            let { value, done } = await generator.next();
+            
+            updateLiveArrays();
+            updateChartData();
+            
+            if(done || value.type === 'DONE') {
+                animState.running = false;
+                document.getElementById('statAlgoStatus').innerText = "Completed";
+                document.getElementById('statAlgoStatus').style.color = "var(--success)";
+                document.getElementById('btnRun').innerHTML = '<i class="fas fa-play"></i> Auto Play';
+                
+                // Color final shortest path tree edges
+                graph.edges.forEach(e => {
+                    if(dijkstraState.prev[e.v] === e.u && dijkstraState.dist[e.v] !== Infinity) e.state = 'path_final';
+                    else e.state = 'normal';
+                });
+                break;
+            }
+            
+            let speed = 2050 - parseInt(document.getElementById('animSpeed').value);
+            if(!animState.stepMode) await new Promise(r => setTimeout(r, speed));
+        }
+        
+        document.getElementById('statTime').innerText = (performance.now() - t0).toFixed(2) + " ms";
+        document.getElementById('pathHighlighter').style.display = 'block';
+    }
+
+    function togglePause() {
+        if(!animState.running) return;
+        if(animState.stepMode) {
+            animState.stepMode = false;
+            animState.paused = false;
+            if(animState.resolveStep) animState.resolveStep();
+        } else {
+            animState.paused = !animState.paused;
+            if(!animState.paused && animState.resolveStep) animState.resolveStep();
+        }
+    }
+
+    function resetSimulator() {
+        animState.running = false;
+        animState.paused = false;
+        animState.stepMode = false;
+        if(animState.resolveStep) animState.resolveStep();
+        
+        graph.nodes.forEach(n => n.state = 'normal');
+        graph.edges.forEach(e => e.state = 'normal');
+        
+        dijkstraState = { dist: [], prev: [], visited: [], pq: [], relaxations: [] };
+        
+        document.getElementById('btnRun').innerHTML = '<i class="fas fa-play"></i> Auto Play';
+        document.getElementById('statAlgoStatus').innerText = "Idle";
+        document.getElementById('statAlgoStatus').style.color = "var(--warning)";
+        document.getElementById('statSource').innerText = "-";
+        document.getElementById('statVisited').innerText = "0 / 0";
+        document.getElementById('statTime').innerText = "0 ms";
+        document.getElementById('statRelax').innerText = "0";
+        document.getElementById('statPQ').innerText = "0";
+        document.getElementById('statPaths').innerText = "0";
+        document.getElementById('pathHighlighter').style.display = 'none';
+        
+        document.getElementById('stepLog').innerHTML = '<div class="log-entry" style="color:var(--accent);">Simulator reset.</div>';
+        updateLiveArrays();
+        updateShortestPathTable();
+        updateChartData(true);
+    }
+
+    // --- Path Highlighter ---
+    function highlightPathTo(dest) {
+        if(!dijkstraState.visited[dest] && (dijkstraState.dist[dest] === undefined || dijkstraState.dist[dest] === Infinity)) return;
+        
+        // Reset edge visuals
+        graph.edges.forEach(e => {
+            if(dijkstraState.prev[e.v] === e.u && dijkstraState.dist[e.v] !== Infinity) e.state = 'path_final';
+            else e.state = 'faded';
+        });
+        
+        let path = getPathSequence(dest);
+        if(path && path.length > 1) {
+            for(let i=0; i<path.length-1; i++) {
+                let u = path[i], v = path[i+1];
+                let edge = graph.edges.find(e => e.u === u && e.v === v);
+                if(edge) { edge.state = 'path_highlight'; }
+            }
+        }
+        
+        document.getElementById('ph-dest').innerText = dest;
+        document.getElementById('ph-dist').innerText = dijkstraState.dist[dest];
+        document.getElementById('ph-seq').innerText = path ? path.join(' → ') : 'None';
+    }
+
+    // --- Canvas Rendering & Interactions ---
+    function resizeCanvas() {
+        const wrapper = document.getElementById('canvasContainer');
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+    }
+    
+    function zoomIn() { canvasTransform.scale *= 1.2; }
+    function zoomOut() { canvasTransform.scale /= 1.2; }
+    function resetView() { canvasTransform = { x: 0, y: 0, scale: 1 }; }
+
+    function setupCanvasEvents() {
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left - canvasTransform.x) / canvasTransform.scale;
+            const my = (e.clientY - rect.top - canvasTransform.y) / canvasTransform.scale;
+            
+            isDragging = graph.nodes.find(n => Math.hypot(n.x - mx, n.y - my) < 25);
+            
+            if(!isDragging) {
+                isPanning = true;
+                startPan = { x: e.clientX - canvasTransform.x, y: e.clientY - canvasTransform.y };
+            } else if(!animState.running && dijkstraState.dist.length > 0) {
+                highlightPathTo(isDragging.id);
+            }
+        });
+
+        window.addEventListener('mousemove', e => {
+            if(isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                isDragging.x = (e.clientX - rect.left - canvasTransform.x) / canvasTransform.scale;
+                isDragging.y = (e.clientY - rect.top - canvasTransform.y) / canvasTransform.scale;
+            } else if (isPanning) {
+                canvasTransform.x = e.clientX - startPan.x;
+                canvasTransform.y = e.clientY - startPan.y;
+            }
+        });
+
+        window.addEventListener('mouseup', () => { isDragging = null; isPanning = false; });
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const zoom = e.deltaY > 0 ? 0.9 : 1.1;
+            canvasTransform.scale *= zoom;
+        });
+    }
+
+    function drawArrow(ctx, fromX, fromY, toX, toY, radius) {
+        let dx = toX - fromX;
+        let dy = toY - fromY;
+        let len = Math.hypot(dx, dy) || 1; // Safeguard to prevent Division by Zero
+        let angle = Math.atan2(dy, dx);
+        
+        // Adjust toX/toY to stop at edge of node radius
+        let targetX = toX - radius * Math.cos(angle);
+        let targetY = toY - radius * Math.sin(angle);
+        let startX = fromX + radius * Math.cos(angle);
+        let startY = fromY + radius * Math.sin(angle);
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(targetX, targetY);
+        ctx.stroke();
+
+        // Arrowhead
+        let headlen = 12;
+        ctx.beginPath();
+        ctx.moveTo(targetX, targetY);
+        ctx.lineTo(targetX - headlen * Math.cos(angle - Math.PI / 6), targetY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(targetX - headlen * Math.cos(angle + Math.PI / 6), targetY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(targetX, targetY);
+        ctx.fill();
+        
+        return { mx: (startX + targetX)/2, my: (startY + targetY)/2 };
+    }
+
+    function renderLoop() {
+        const root = getComputedStyle(document.documentElement);
+        const colBg = root.getPropertyValue('--node-bg').trim();
+        const colNorm = root.getPropertyValue('--edge-normal').trim();
+        const colActive = root.getPropertyValue('--edge-active').trim();
+        const colPath = root.getPropertyValue('--edge-path').trim();
+        const colText = root.getPropertyValue('--text-main').trim();
+        const radius = 22;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(canvasTransform.x, canvasTransform.y);
+        ctx.scale(canvasTransform.scale, canvasTransform.scale);
+
+        // Map for fast curve checking to prevent expensive loops O(E^2) in frame rendering
+        const edgeSet = new Set(graph.edges.map(e => `${e.u},${e.v}`));
+
+        // Draw Edges
+        graph.edges.forEach(e => {
+            let u = graph.nodes[e.u], v = graph.nodes[e.v];
+            if(!u || !v) return;
+
+            let isCurved = edgeSet.has(`${e.v},${e.u}`);
+            
+            ctx.lineWidth = 3;
+            if(e.state === 'relaxing') { ctx.strokeStyle = colActive; ctx.fillStyle = colActive; ctx.lineWidth = 5; }
+            else if(e.state === 'path' || e.state === 'path_final') { ctx.strokeStyle = colPath; ctx.fillStyle = colPath; ctx.lineWidth = 4; }
+            else if(e.state === 'path_highlight') { ctx.strokeStyle = '#0ea5e9'; ctx.fillStyle = '#0ea5e9'; ctx.lineWidth = 6; }
+            else if(e.state === 'faded') { ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)'; ctx.fillStyle = 'rgba(148, 163, 184, 0.2)'; ctx.lineWidth = 2; }
+            else { ctx.strokeStyle = colNorm; ctx.fillStyle = colNorm; }
+
+            let mid;
+            if(isCurved) {
+                // simple curve offset
+                let dx = v.x - u.x, dy = v.y - u.y;
+                let len = Math.hypot(dx, dy) || 1; // Prevent division by zero
+                let nx = -dy/len, ny = dx/len;
+                let cx = (u.x+v.x)/2 + nx*30, cy = (u.y+v.y)/2 + ny*30;
+                
+                ctx.beginPath();
+                ctx.moveTo(u.x, u.y);
+                ctx.quadraticCurveTo(cx, cy, v.x, v.y);
+                ctx.stroke();
+                
+                // Draw Arrowhead at curve end manually (approximate)
+                let angle = Math.atan2(v.y - cy, v.x - cx);
+                let tx = v.x - radius * Math.cos(angle);
+                let ty = v.y - radius * Math.sin(angle);
+                ctx.beginPath();
+                ctx.moveTo(tx, ty);
+                ctx.lineTo(tx - 12*Math.cos(angle-Math.PI/6), ty - 12*Math.sin(angle-Math.PI/6));
+                ctx.lineTo(tx - 12*Math.cos(angle+Math.PI/6), ty - 12*Math.sin(angle+Math.PI/6));
+                ctx.fill();
+                mid = { mx: cx, my: cy };
+            } else {
+                mid = drawArrow(ctx, u.x, u.y, v.x, v.y, radius);
+            }
+
+            // Weight badge
+            ctx.fillStyle = colBg;
+            ctx.beginPath(); ctx.arc(mid.mx, mid.my, 12, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = ctx.fillStyle; ctx.stroke();
+            
+            ctx.fillStyle = (e.state==='faded') ? 'rgba(148,163,184,0.5)' : colText;
+            ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(e.w, mid.mx, mid.my);
+        });
+
+        // Draw Nodes
+        graph.nodes.forEach(n => {
+            ctx.beginPath(); ctx.arc(n.x, n.y, radius, 0, Math.PI*2);
+            
+            if(n.state === 'current') { ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#fff'; }
+            else if(n.state === 'visited') { ctx.fillStyle = colPath; ctx.strokeStyle = '#fff'; }
+            else if(n.state === 'target') { ctx.fillStyle = colActive; ctx.strokeStyle = '#fff'; }
+            else { ctx.fillStyle = colBg; ctx.strokeStyle = '#3b82f6'; }
+            
+            ctx.fill(); ctx.lineWidth = 3; ctx.stroke();
+
+            ctx.fillStyle = (n.state==='normal') ? colText : '#fff';
+            ctx.font = 'bold 16px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(n.id, n.x, n.y);
+            
+            // Draw current distance label above node
+            if(dijkstraState.dist && dijkstraState.dist.length > 0) {
+                let d = dijkstraState.dist[n.id];
+                let dStr = (d === undefined || d === Infinity) ? '∞' : d;
+                ctx.fillStyle = colText;
+                ctx.font = '12px Inter';
+                ctx.fillText(`d=${dStr}`, n.x, n.y - radius - 10);
+            }
+        });
+
+        ctx.restore();
+        requestAnimationFrame(renderLoop);
+    }
+
+    // --- Charts ---
+    function initCharts() {
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Inter';
+
+        distChartObj = new Chart(document.getElementById('distChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Shortest Distance', data: [], backgroundColor: '#10b981' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: {display: true, text: 'Distance to Vertices'} } }
+        });
+
+        relaxChartObj = new Chart(document.getElementById('relaxChart'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ label: 'Edge Relaxations', data: [], backgroundColor: '#f59e0b' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: {display: true, text: 'Relaxations per Vertex'} } }
+        });
+    }
+
+    function updateChartData(reset = false) {
+        let labels = Array.from({length: graph.V}, (_, i) => `V${i}`);
+        distChartObj.data.labels = labels;
+        relaxChartObj.data.labels = labels;
+        
+        if(reset) {
+            distChartObj.data.datasets[0].data = [];
+            relaxChartObj.data.datasets[0].data = [];
+        } else {
+            distChartObj.data.datasets[0].data = dijkstraState.dist.map(d => (d === undefined || d === Infinity) ? 0 : d);
+            relaxChartObj.data.datasets[0].data = dijkstraState.relaxations;
+        }
+        
+        distChartObj.update();
+        relaxChartObj.update();
+    }
+
+    function updateChartThemes() {
+        const root = document.documentElement;
+        let color = root.getAttribute('data-theme') === 'dark' ? '#94a3b8' : '#475569';
+        Chart.defaults.color = color;
+        if(distChartObj) distChartObj.update();
+        if(relaxChartObj) relaxChartObj.update();
+    }
+
+    // Run
+    window.onload = init;
+
+</script>
+</body>
+</html>
