@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 5: Divide and Conquer - Min & Max</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --primary: #bb86fc;
+            --secondary: #03dac6;
+            --error: #cf6679;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --border: #333333;
+            --highlight: rgba(187, 134, 252, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { font-size: 1.5rem; font-weight: 500; color: var(--primary); }
+        h2 { font-size: 1.2rem; font-weight: 400; margin-bottom: 10px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 900px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .panel {
+            background-color: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            background-color: #2c2c2c;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button.secondary { background-color: #444; color: #fff; }
+        button.action { background-color: var(--secondary); color: #000; }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .card.naive { border-left-color: var(--secondary); }
+
+        .card h3 { font-size: 1rem; margin-bottom: 10px; color: var(--text-muted); }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .stat-val { font-weight: bold; }
+
+        /* Visualization */
+        .viz-area {
+            background-color: #1a1a1a;
+            padding: 20px;
+            border-radius: 6px;
+            min-height: 120px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .block {
+            width: 40px;
+            height: 40px;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        /* Highlight classes */
+        .block.partition { border-color: var(--primary); background-color: var(--highlight); }
+        .block.current { border-color: #fff; transform: scale(1.1); }
+        .block.min { background-color: var(--secondary); color: #000; }
+        .block.max { background-color: var(--error); color: #000; }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th { background-color: #2a2a2a; color: var(--text-muted); }
+        .better-stat { color: var(--secondary); font-weight: bold; }
+
+        /* Log */
+        .log-box {
+            height: 150px;
+            background-color: #121212;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .log-entry { margin-bottom: 4px; }
+        .log-entry.dividing { color: var(--primary); }
+        .log-entry.updating { color: var(--secondary); }
+        
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            margin-top: 20px;
+        }
+
+        .status {
+            font-size: 0.85rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Experiment 5</h1>
+        <h2>Divide and Conquer - Find Minimum and Maximum</h2>
+    </header>
+
+    <div class="grid">
+        <!-- Left Column: Inputs and Performance -->
+        <div>
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Enter Array Elements (comma-separated)</label>
+                    <textarea id="arrayInput">3,1,7,4,9,2,8,5,6,0</textarea>
+                </div>
+                <div>
+                    <button class="secondary" onclick="loadSample()">Load Sample</button>
+                    <button class="secondary" onclick="generateRandom()">Generate Random Array</button>
+                    <button class="secondary" onclick="clearInput()">Clear</button>
+                    <button class="action" onclick="runComparison()">Run Comparison</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Performance Test (Automated)</h2>
+                <button class="secondary" onclick="runPerformanceTest()" style="margin-bottom: 10px;">Run Auto Test</button>
+                <div style="overflow-x: auto;">
+                    <table id="perfTable">
+                        <thead>
+                            <tr>
+                                <th>Size</th>
+                                <th>D&C Comps</th>
+                                <th>Naive Comps</th>
+                                <th>Formula (3n/2 - 2)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Click "Run Auto Test" to generate.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="compChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Outputs, Viz, Logs -->
+        <div>
+            <div class="card-container">
+                <div class="card">
+                    <h3>Divide & Conquer</h3>
+                    <div class="stat-row"><span>Minimum:</span> <span class="stat-val" id="dcMin">-</span></div>
+                    <div class="stat-row"><span>Maximum:</span> <span class="stat-val" id="dcMax">-</span></div>
+                    <div class="stat-row"><span>Comparisons:</span> <span class="stat-val" id="dcComps">-</span></div>
+                    <div class="stat-row"><span>Execution Time:</span> <span class="stat-val" id="dcTime">-</span></div>
+                </div>
+                <div class="card naive">
+                    <h3>Naive Method</h3>
+                    <div class="stat-row"><span>Minimum:</span> <span class="stat-val" id="nvMin">-</span></div>
+                    <div class="stat-row"><span>Maximum:</span> <span class="stat-val" id="nvMax">-</span></div>
+                    <div class="stat-row"><span>Comparisons:</span> <span class="stat-val" id="nvComps">-</span></div>
+                    <div class="stat-row"><span>Execution Time:</span> <span class="stat-val" id="nvTime">-</span></div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-bottom: 20px;">
+                <h2>Comparison Table</h2>
+                <div style="overflow-x: auto;">
+                    <table id="compTable">
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Minimum</th>
+                                <th>Maximum</th>
+                                <th>Comparisons</th>
+                                <th>Exec Time (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Run comparison to view results.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Visualization</h2>
+                <div class="status" id="vizStatus">Waiting to run...</div>
+                <div class="viz-area" id="vizArea">
+                    <!-- Blocks injected here -->
+                </div>
+                
+                <h2>Step Log</h2>
+                <div class="log-box" id="stepLog"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global State
+    let chartInstance = null;
+    let abortController = null;
+
+    // Utility Functions
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    function logMessage(msg, type = '') {
+        const logBox = document.getElementById('stepLog');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.textContent = `> ${msg}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function clearLog() {
+        document.getElementById('stepLog').innerHTML = '';
+    }
+
+    // UI Input Handlers
+    function loadSample() {
+        document.getElementById('arrayInput').value = "3,1,7,4,9,2,8,5,6,0";
+    }
+
+    function generateRandom() {
+        const size = Math.floor(Math.random() * 15) + 5; // 5 to 20 elements
+        const arr = Array.from({length: size}, () => Math.floor(Math.random() * 100));
+        document.getElementById('arrayInput').value = arr.join(',');
+    }
+
+    function clearInput() {
+        document.getElementById('arrayInput').value = "";
+        document.getElementById('vizArea').innerHTML = "";
+        clearLog();
+    }
+
+    function getArrayFromInput() {
+        const raw = document.getElementById('arrayInput').value;
+        const arr = raw.split(',').map(item => parseInt(item.trim(), 10)).filter(item => !isNaN(item));
+        return arr;
+    }
+
+    // --- ALGORITHMS ---
+
+    // 1. Divide and Conquer
+    function runDivideAndConquer(arr) {
+        let comparisons = 0;
+        let steps = [];
+
+        function getMinMax(low, high) {
+            steps.push({ type: 'partition', low, high, msg: `Dividing partition [${low} to ${high}]` });
+            
+            let result = { min: arr[low], max: arr[low], minIdx: low, maxIdx: low };
+
+            // 1 element
+            if (low === high) {
+                return result;
+            }
+
+            // 2 elements
+            if (high === low + 1) {
+                comparisons++;
+                steps.push({ type: 'compare', low, high, msg: `Comparing values at ${low} and ${high}` });
+                if (arr[low] > arr[high]) {
+                    result.max = arr[low]; result.maxIdx = low;
+                    result.min = arr[high]; result.minIdx = high;
+                } else {
+                    result.max = arr[high]; result.maxIdx = high;
+                    result.min = arr[low]; result.minIdx = low;
+                }
+                steps.push({ type: 'update', minIdx: result.minIdx, maxIdx: result.maxIdx, msg: `Local Min: ${result.min}, Max: ${result.max}` });
+                return result;
+            }
+
+            // > 2 elements
+            let mid = Math.floor((low + high) / 2);
+            let left = getMinMax(low, mid);
+            let right = getMinMax(mid + 1, high);
+
+            steps.push({ type: 'compare', msg: `Merging halves [${low}-${mid}] and [${mid+1}-${high}]` });
+            
+            comparisons++;
+            if (left.min < right.min) {
+                result.min = left.min; result.minIdx = left.minIdx;
+            } else {
+                result.min = right.min; result.minIdx = right.minIdx;
+            }
+
+            comparisons++;
+            if (left.max > right.max) {
+                result.max = left.max; result.maxIdx = left.maxIdx;
+            } else {
+                result.max = right.max; result.maxIdx = right.maxIdx;
+            }
+
+            steps.push({ type: 'update', minIdx: result.minIdx, maxIdx: result.maxIdx, msg: `Merged Min: ${result.min}, Max: ${result.max}` });
+            return result;
+        }
+
+        const t0 = performance.now();
+        const res = arr.length > 0 ? getMinMax(0, arr.length - 1) : {min: '-', max: '-'};
+        const t1 = performance.now();
+
+        return { ...res, comparisons, time: (t1 - t0).toFixed(4), steps };
+    }
+
+    // 2. Naive Linear Method
+    function runNaiveMethod(arr) {
+        let comparisons = 0;
+        let steps = [];
+        
+        if (arr.length === 0) return { min: '-', max: '-', comparisons: 0, time: 0, steps: [] };
+
+        const t0 = performance.now();
+        
+        let min = arr[0], max = arr[0];
+        let minIdx = 0, maxIdx = 0;
+
+        for (let i = 1; i < arr.length; i++) {
+            steps.push({ type: 'current', idx: i, minIdx, maxIdx, msg: `Checking element at index ${i} (${arr[i]})` });
+            
+            comparisons++;
+            if (arr[i] > max) {
+                max = arr[i];
+                maxIdx = i;
+                steps.push({ type: 'update', minIdx, maxIdx, msg: `Updating maximum to ${max}` });
+            } else {
+                comparisons++;
+                if (arr[i] < min) {
+                    min = arr[i];
+                    minIdx = i;
+                    steps.push({ type: 'update', minIdx, maxIdx, msg: `Updating minimum to ${min}` });
+                }
+            }
+        }
+        
+        const t1 = performance.now();
+
+        return { min, max, minIdx, maxIdx, comparisons, time: (t1 - t0).toFixed(4), steps };
+    }
+
+    // --- EXECUTION & UI ---
+
+    async function runComparison() {
+        const arr = getArrayFromInput();
+        if (arr.length === 0) {
+            alert("Please enter a valid array.");
+            return;
+        }
+
+        if (abortController) {
+            abortController.abort();
+        }
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
+        clearLog();
+        const dcResult = runDivideAndConquer(arr);
+        const nvResult = runNaiveMethod(arr);
+
+        // Update Output Cards
+        document.getElementById('dcMin').textContent = dcResult.min;
+        document.getElementById('dcMax').textContent = dcResult.max;
+        document.getElementById('dcComps').textContent = dcResult.comparisons;
+        document.getElementById('dcTime').textContent = dcResult.time + " ms";
+
+        document.getElementById('nvMin').textContent = nvResult.min;
+        document.getElementById('nvMax').textContent = nvResult.max;
+        document.getElementById('nvComps').textContent = nvResult.comparisons;
+        document.getElementById('nvTime').textContent = nvResult.time + " ms";
+
+        // Update Comparison Table
+        const dcBetter = dcResult.comparisons <= nvResult.comparisons;
+        const nvBetter = nvResult.comparisons <= dcResult.comparisons;
+
+        const tbody = document.querySelector('#compTable tbody');
+        tbody.innerHTML = `
+            <tr>
+                <td>Divide & Conquer</td>
+                <td>${dcResult.min}</td>
+                <td>${dcResult.max}</td>
+                <td class="${dcBetter ? 'better-stat' : ''}">${dcResult.comparisons}</td>
+                <td>${dcResult.time}</td>
+            </tr>
+            <tr>
+                <td>Naive Linear</td>
+                <td>${nvResult.min}</td>
+                <td>${nvResult.max}</td>
+                <td class="${nvBetter ? 'better-stat' : ''}">${nvResult.comparisons}</td>
+                <td>${nvResult.time}</td>
+            </tr>
+        `;
+
+        // Run Visualization (Only if array is small enough to not cause freezing)
+        if (arr.length <= 40) {
+            await visualize(arr, dcResult.steps, nvResult.steps, signal);
+        } else {
+            document.getElementById('vizStatus').textContent = "Array too large for visualization (>40 elements). Displaying results instantly.";
+            renderArrayBlocks(arr);
+        }
+    }
+
+    function renderArrayBlocks(arr) {
+        const vizArea = document.getElementById('vizArea');
+        vizArea.innerHTML = '';
+        arr.forEach((val, idx) => {
+            const block = document.createElement('div');
+            block.className = 'block';
+            block.id = `block-${idx}`;
+            block.textContent = val;
+            vizArea.appendChild(block);
+        });
+    }
+
+    function resetBlocks() {
+        const blocks = document.querySelectorAll('.block');
+        blocks.forEach(b => {
+            b.className = 'block';
+        });
+    }
+
+    async function visualize(arr, dcSteps, nvSteps, signal) {
+        renderArrayBlocks(arr);
+        const vizStatus = document.getElementById('vizStatus');
+
+        // Visualize Divide and Conquer
+        vizStatus.textContent = "Visualizing: Divide and Conquer";
+        logMessage("--- Starting Divide & Conquer ---", "dividing");
+        
+        for (const step of dcSteps) {
+            if (signal.aborted) return;
+            resetBlocks();
+
+            if (step.type === 'partition' || step.type === 'compare' || step.type === 'conquer' || step.type === 'merge') {
+                if (step.low !== undefined && step.high !== undefined) {
+                    for (let i = step.low; i <= step.high; i++) {
+                        const b = document.getElementById(`block-${i}`);
+                        if (b) b.classList.add('partition');
+                    }
+                }
+            }
+
+            if (step.minIdx !== undefined) {
+                const bMin = document.getElementById(`block-${step.minIdx}`);
+                if (bMin) bMin.classList.add('min');
+            }
+            if (step.maxIdx !== undefined) {
+                const bMax = document.getElementById(`block-${step.maxIdx}`);
+                if (bMax) bMax.classList.add('max');
+            }
+
+            if (step.type === 'partition') logMessage(step.msg, "dividing");
+            else if (step.type === 'update' || step.type === 'merge' || step.type === 'conquer') logMessage(step.msg, "updating");
+            else logMessage(step.msg);
+
+            await sleep(400);
+        }
+        logMessage("Divide & Conquer Finished.", "updating");
+        await sleep(1000);
+        if (signal.aborted) return;
+
+        // Visualize Naive
+        vizStatus.textContent = "Visualizing: Naive Method";
+        logMessage("--- Starting Naive Method ---", "dividing");
+        resetBlocks();
+
+        for (const step of nvSteps) {
+            if (signal.aborted) return;
+            resetBlocks();
+
+            if (step.idx !== undefined) {
+                const bCurr = document.getElementById(`block-${step.idx}`);
+                if (bCurr) bCurr.classList.add('current');
+            }
+
+            if (step.minIdx !== undefined) {
+                const bMin = document.getElementById(`block-${step.minIdx}`);
+                if (bMin) bMin.classList.add('min');
+            }
+            if (step.maxIdx !== undefined) {
+                const bMax = document.getElementById(`block-${step.maxIdx}`);
+                if (bMax) bMax.classList.add('max');
+            }
+
+            if (step.type === 'update') logMessage(step.msg, "updating");
+            else logMessage(step.msg);
+
+            await sleep(300);
+        }
+        
+        vizStatus.textContent = "Visualization Finished.";
+        logMessage("Naive Method Finished.", "updating");
+    }
+
+    // --- PERFORMANCE TEST ---
+    function runPerformanceTest() {
+        const sizes = [10, 100, 1000, 10000];
+        const tbody = document.querySelector('#perfTable tbody');
+        tbody.innerHTML = '';
+        
+        const chartLabels = [];
+        const chartDcData = [];
+        const chartNvData = [];
+
+        sizes.forEach(size => {
+            // Generate random array of given size
+            const arr = Array.from({length: size}, () => Math.floor(Math.random() * 10000));
+            
+            // Run silent logic (no visual steps recorded to prevent memory overload)
+            const dcComps = silentDivideAndConquer(arr, 0, arr.length - 1);
+            const nvComps = silentNaive(arr);
+            const formula = Math.ceil((3 * size) / 2) - 2;
+
+            chartLabels.push(`Size ${size}`);
+            chartDcData.push(dcComps);
+            chartNvData.push(nvComps);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${size}</td>
+                <td class="better-stat">${dcComps}</td>
+                <td>${nvComps}</td>
+                <td>${formula}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        renderChart(chartLabels, chartDcData, chartNvData);
+    }
+
+    // Silent versions of algorithms that ONLY count comparisons (to avoid building massive step arrays)
+    function silentDivideAndConquer(arr, low, high) {
+        if (low === high) return 0;
+        if (high === low + 1) return 1;
+
+        let mid = Math.floor((low + high) / 2);
+        let leftComps = silentDivideAndConquer(arr, low, mid);
+        let rightComps = silentDivideAndConquer(arr, mid + 1, high);
+
+        // 2 comparisons made for min and max merges
+        return leftComps + rightComps + 2; 
+    }
+
+    function silentNaive(arr) {
+        if(arr.length === 0) return 0;
+        let comps = 0;
+        let min = arr[0], max = arr[0];
+        for (let i = 1; i < arr.length; i++) {
+            comps++;
+            if (arr[i] > max) {
+                max = arr[i];
+            } else {
+                comps++;
+                if (arr[i] < min) {
+                    min = arr[i];
+                }
+            }
+        }
+        return comps;
+    }
+
+    function renderChart(labels, dcData, nvData) {
+        const ctx = document.getElementById('compChart').getContext('2d');
+        
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Divide & Conquer Comparisons',
+                        data: dcData,
+                        backgroundColor: '#bb86fc',
+                        borderColor: '#bb86fc',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Naive Comparisons',
+                        data: nvData,
+                        backgroundColor: '#03dac6',
+                        borderColor: '#03dac6',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#333' },
+                        ticks: { color: '#9e9e9e' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#9e9e9e' }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e0e0e0' } }
+                }
+            }
+        });
+    }
+
+</script>
+
+</body>
+</html>
