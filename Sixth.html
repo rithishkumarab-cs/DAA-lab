@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 6: Matrix Chain Multiplication (DP)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --surface-dark: #1e1e1e;
+            --primary: #bb86fc;
+            --secondary: #03dac6;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --border: #333333;
+            --highlight: rgba(187, 134, 252, 0.3);
+            --split-left: rgba(3, 218, 198, 0.4);
+            --split-right: rgba(207, 102, 121, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 400;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--surface-dark);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background-color: #2c2c2c;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        button.secondary {
+            background-color: #444;
+            color: #fff;
+        }
+
+        button.action {
+            background-color: var(--secondary);
+            color: #000;
+        }
+
+        .output-metrics {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background-color: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .metric-card h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        /* DP Table Styles */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            text-align: center;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 10px;
+            min-width: 40px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        th {
+            background-color: #2a2a2a;
+            color: var(--text-muted);
+        }
+
+        td.highlight {
+            background-color: var(--highlight);
+            color: #fff;
+            font-weight: bold;
+            transform: scale(1.05);
+        }
+
+        /* Matrix Chain Visualization */
+        .chain-viz {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #121212;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            min-height: 70px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .matrix-block {
+            padding: 10px 15px;
+            background-color: #333;
+            border-radius: 4px;
+            font-weight: bold;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .matrix-block.left-split {
+            background-color: var(--split-left);
+            border-color: var(--secondary);
+        }
+
+        .matrix-block.right-split {
+            background-color: var(--split-right);
+            border-color: #cf6679;
+        }
+
+        /* Step Log */
+        .step-log {
+            height: 200px;
+            background-color: #121212;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px dashed #333;
+        }
+
+        .log-entry.active {
+            color: var(--primary);
+        }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            margin-top: 20px;
+        }
+
+        .status-bar {
+            font-size: 0.9rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            min-height: 22px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Experiment 6</h1>
+        <h2>Matrix Chain Multiplication using Dynamic Programming</h2>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Left Column: Input and Stats -->
+        <div>
+            <div class="panel">
+                <div class="form-group">
+                    <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Matrix Dimensions (comma-separated)</label>
+                    <input type="text" id="dimInput" value="10,30,5,60,10" placeholder="e.g., 10,30,5,60,10">
+                </div>
+                <div>
+                    <button class="secondary" onclick="loadSample()">Load Sample</button>
+                    <button class="secondary" onclick="clearAll()">Clear</button>
+                    <button class="action" onclick="runAlgorithm()">Run Algorithm</button>
+                </div>
+            </div>
+
+            <div class="output-metrics">
+                <div class="metric-card">
+                    <h3>Min Scalar Multiplications</h3>
+                    <div class="metric-value" id="minCost">-</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Optimal Parenthesization</h3>
+                    <div class="metric-value" id="optParens" style="color: var(--primary);">-</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Execution Time</h3>
+                    <div class="metric-value" id="execTime">-</div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 20px;">
+                <h2>Statistics Chart</h2>
+                <div class="chart-container">
+                    <canvas id="mcmChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Visualization and Tables -->
+        <div>
+            <div class="panel">
+                <h2>Visualization</h2>
+                <div class="status-bar" id="statusMsg">Waiting to run...</div>
+                
+                <div class="chain-viz" id="chainViz">
+                    <!-- Matrix blocks injected here -->
+                </div>
+
+                <h2>Dynamic Programming Cost Table (m)</h2>
+                <div class="table-container" id="dpTableContainer">
+                    <!-- DP Table injected here -->
+                </div>
+
+                <h2>Step Log</h2>
+                <div class="step-log" id="stepLog"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Global State
+    let chartInstance = null;
+    let abortController = null;
+    
+    // Utility functions
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function logStep(msg, isActive = false) {
+        const logBox = document.getElementById('stepLog');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${isActive ? 'active' : ''}`;
+        entry.textContent = `> ${msg}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function clearLog() {
+        document.getElementById('stepLog').innerHTML = '';
+    }
+
+    function setStatus(msg) {
+        document.getElementById('statusMsg').textContent = msg;
+    }
+
+    // UI Input Handlers
+    function loadSample() {
+        document.getElementById('dimInput').value = "10,30,5,60,10";
+    }
+
+    function clearAll() {
+        document.getElementById('dimInput').value = "";
+        document.getElementById('minCost').textContent = "-";
+        document.getElementById('optParens').textContent = "-";
+        document.getElementById('execTime').textContent = "-";
+        document.getElementById('dpTableContainer').innerHTML = "";
+        document.getElementById('chainViz').innerHTML = "";
+        setStatus("Cleared.");
+        clearLog();
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        if (abortController) {
+            abortController.abort();
+        }
+    }
+
+    function getDimensions() {
+        const raw = document.getElementById('dimInput').value;
+        return raw.split(',').map(item => parseInt(item.trim(), 10)).filter(item => !isNaN(item));
+    }
+
+    // Initialization and Rendering
+    function renderChain(n) {
+        const container = document.getElementById('chainViz');
+        container.innerHTML = '';
+        for (let i = 1; i <= n; i++) {
+            const block = document.createElement('div');
+            block.className = 'matrix-block';
+            block.id = `matrix-${i}`;
+            block.textContent = `A${i}`;
+            container.appendChild(block);
+        }
+    }
+
+    function resetChainHighlight() {
+        const blocks = document.querySelectorAll('.matrix-block');
+        blocks.forEach(b => {
+            b.classList.remove('left-split', 'right-split');
+        });
+    }
+
+    function highlightSplit(i, k, j) {
+        resetChainHighlight();
+        for (let x = i; x <= k; x++) {
+            const b = document.getElementById(`matrix-${x}`);
+            if (b) b.classList.add('left-split');
+        }
+        for (let x = k + 1; x <= j; x++) {
+            const b = document.getElementById(`matrix-${x}`);
+            if (b) b.classList.add('right-split');
+        }
+    }
+
+    function initDPTable(n) {
+        const container = document.getElementById('dpTableContainer');
+        let html = '<table><thead><tr><th></th>';
+        for (let i = 1; i <= n; i++) html += `<th>A${i}</th>`;
+        html += '</tr></thead><tbody>';
+        
+        for (let i = 1; i <= n; i++) {
+            html += `<tr><th>A${i}</th>`;
+            for (let j = 1; j <= n; j++) {
+                if (j >= i) {
+                    html += `<td id="cell-${i}-${j}">0</td>`;
+                } else {
+                    html += `<td>-</td>`;
+                }
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function updateTableCell(i, j, val) {
+        const cell = document.getElementById(`cell-${i}-${j}`);
+        if (cell) {
+            document.querySelectorAll('td').forEach(td => td.classList.remove('highlight'));
+            cell.textContent = val;
+            cell.classList.add('highlight');
+        }
+    }
+
+    function getOptimalParens(s, i, j) {
+        if (i === j) {
+            return `A${i}`;
+        }
+        return `(${getOptimalParens(s, i, s[i][j])}${getOptimalParens(s, s[i][j] + 1, j)})`;
+    }
+
+    function renderChart(n, minCost) {
+        const ctx = document.getElementById('mcmChart').getContext('2d');
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Number of Matrices', 'Minimum Cost'],
+                datasets: [{
+                    label: 'MCM Statistics',
+                    data: [n, minCost],
+                    backgroundColor: ['#bb86fc', '#03dac6'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#333' },
+                        ticks: { color: '#9e9e9e' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#9e9e9e' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Algorithm Execution
+    async function runAlgorithm() {
+        const p = getDimensions();
+        if (p.length < 2) {
+            alert("Please enter at least 2 dimensions (1 matrix).");
+            return;
+        }
+
+        if (abortController) {
+            abortController.abort();
+        }
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
+        clearLog();
+        const n = p.length - 1;
+        
+        // Setup UI
+        renderChain(n);
+        initDPTable(n);
+        
+        logStep("Initializing DP Table", true);
+        setStatus("Computing Matrix Chain Order...");
+
+        const m = Array(n + 1).fill(0).map(() => Array(n + 1).fill(0));
+        const s = Array(n + 1).fill(0).map(() => Array(n + 1).fill(0));
+
+        const t0 = performance.now();
+
+        // l is chain length
+        for (let l = 2; l <= n; l++) {
+            if (signal.aborted) return;
+            logStep(`Evaluating Chain Length ${l}`);
+            
+            for (let i = 1; i <= n - l + 1; i++) {
+                if (signal.aborted) return;
+                
+                let j = i + l - 1;
+                m[i][j] = Infinity;
+                
+                for (let k = i; k <= j - 1; k++) {
+                    if (signal.aborted) return;
+                    
+                    highlightSplit(i, k, j);
+                    
+                    let q = m[i][k] + m[k + 1][j] + (p[i - 1] * p[k] * p[j]);
+                    
+                    if (q < m[i][j]) {
+                        m[i][j] = q;
+                        s[i][j] = k;
+                        updateTableCell(i, j, q);
+                        logStep(`Updating Minimum Cost for A${i}..A${j} -> ${q}`);
+                        logStep(`Choosing Split Position at A${k}`);
+                    }
+                    
+                    // Delay for visualization if N is reasonable to prevent freezing
+                    if (n <= 15) {
+                        await sleep(100);
+                    }
+                }
+            }
+        }
+
+        const t1 = performance.now();
+        resetChainHighlight();
+        document.querySelectorAll('td').forEach(td => td.classList.remove('highlight'));
+        
+        const finalCost = m[1][n] || 0;
+        const optParensStr = n > 0 ? getOptimalParens(s, 1, n) : "-";
+
+        logStep("Completed", true);
+        setStatus("Computation Finished.");
+
+        document.getElementById('minCost').textContent = finalCost;
+        document.getElementById('optParens').textContent = optParensStr;
+        document.getElementById('execTime').textContent = (t1 - t0).toFixed(4) + " ms";
+
+        renderChart(n, finalCost);
+    }
+</script>
+
+</body>
+</html>
