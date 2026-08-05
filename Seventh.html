@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment No. 7 - N-Queens Problem</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --border-color: #333;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --accent: #6200ee;
+            --accent-hover: #7f39fb;
+            --success: #03dac6;
+            --error: #cf6679;
+            --warning: #ffb300;
+            --board-light: #444;
+            --board-dark: #222;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--panel-bg);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 20px;
+            padding: 20px;
+            flex: 1;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            color: var(--success);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        /* Forms and Buttons */
+        label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background-color: var(--accent);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button.secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+        }
+
+        button.secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        /* Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-box.full {
+            grid-column: span 2;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--success);
+            margin-top: 5px;
+        }
+
+        /* Chessboard */
+        .board-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            padding: 20px;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chessboard {
+            display: grid;
+            border: 2px solid var(--text-muted);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            transition: background-color 0.1s;
+        }
+
+        .cell.light { background-color: var(--board-light); }
+        .cell.dark { background-color: var(--board-dark); }
+        
+        .cell.current { border: 3px solid var(--warning); box-sizing: border-box; }
+        .cell.conflict { background-color: rgba(207, 102, 121, 0.6); }
+        .cell.placed { color: #fff; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
+        .cell.backtrack { background-color: rgba(255, 179, 0, 0.4); }
+
+        /* Solutions Gallery */
+        #solutions-panel {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .mini-board {
+            display: grid;
+            border: 1px solid var(--border-color);
+        }
+
+        .mini-cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+        }
+        
+        .mini-cell.light { background-color: var(--board-light); }
+        .mini-cell.dark { background-color: var(--board-dark); }
+
+        .gallery-controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* Log */
+        .log-container {
+            flex: 1;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 250px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry { margin-bottom: 5px; }
+        .log-try { color: var(--warning); }
+        .log-place { color: var(--success); }
+        .log-conflict { color: var(--error); }
+        .log-remove { color: var(--text-muted); }
+        .log-solution { color: var(--accent); font-weight: bold; }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 200px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .board-container { min-height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Experiment No. 7: Solving N-Queens Problem using Backtracking</h1>
+    </header>
+
+    <div class="dashboard">
+        
+        <!-- Input & Stats Panel -->
+        <aside class="panel">
+            <h2>Input Panel</h2>
+            <div>
+                <label for="board-size">Board Size (N):</label>
+                <select id="board-size">
+                    <option value="4">4 x 4</option>
+                    <option value="6">6 x 6</option>
+                    <option value="8">8 x 8</option>
+                </select>
+            </div>
+            <button onclick="loadSample()" class="secondary">Load Sample (N=4)</button>
+            <button onclick="runAlgorithm()" id="run-btn">Run Algorithm</button>
+            <button onclick="resetSimulation()" class="secondary" id="reset-btn">Reset</button>
+
+            <h2>Output Panel</h2>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <label>Board Size</label>
+                    <div class="stat-value" id="stat-size">4</div>
+                </div>
+                <div class="stat-box">
+                    <label>Solutions</label>
+                    <div class="stat-value" id="stat-solutions">0</div>
+                </div>
+                <div class="stat-box">
+                    <label>Backtracks</label>
+                    <div class="stat-value" id="stat-backtracks">0</div>
+                </div>
+                <div class="stat-box">
+                    <label>Time (ms)</label>
+                    <div class="stat-value" id="stat-time">0.00</div>
+                </div>
+                <div class="stat-box full">
+                    <label>Status</label>
+                    <div class="stat-value" id="stat-status" style="color: var(--warning);">Idle</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Visualization Panel -->
+        <main class="panel" style="gap: 20px;">
+            <h2>Chessboard Visualization</h2>
+            <div class="board-container" id="board-container">
+                <!-- Board will be generated here -->
+            </div>
+
+            <!-- Solution Gallery (Only for N=4) -->
+            <div id="solutions-panel">
+                <h2>Valid Solutions Gallery</h2>
+                <div class="mini-board" id="mini-board"></div>
+                <div class="gallery-controls">
+                    <button onclick="prevSolution()" class="secondary">Previous</button>
+                    <div style="flex: 1; text-align: center; align-self: center;" id="solution-counter">Solution 0 of 0</div>
+                    <button onclick="nextSolution()" class="secondary">Next</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Logs & Chart Panel -->
+        <aside class="panel">
+            <h2>Step Log</h2>
+            <div class="log-container" id="log-container"></div>
+
+            <h2>Statistics Chart</h2>
+            <div class="chart-container">
+                <canvas id="solutionChart"></canvas>
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+        // DOM Elements
+        const boardContainer = document.getElementById('board-container');
+        const sizeSelect = document.getElementById('board-size');
+        const runBtn = document.getElementById('run-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const logContainer = document.getElementById('log-container');
+        
+        // Stats Elements
+        const statSize = document.getElementById('stat-size');
+        const statSolutions = document.getElementById('stat-solutions');
+        const statBacktracks = document.getElementById('stat-backtracks');
+        const statTime = document.getElementById('stat-time');
+        const statStatus = document.getElementById('stat-status');
+        
+        // Solution Gallery Elements
+        const solutionsPanel = document.getElementById('solutions-panel');
+        const miniBoard = document.getElementById('mini-board');
+        const solutionCounter = document.getElementById('solution-counter');
+
+        // State variables
+        let n = 4;
+        let cells = [];
+        let solutions = [];
+        let backtracks = 0;
+        let isRunning = false;
+        let abortController = null;
+        let currentSolutionIndex = 0;
+        let chartInstance = null;
+        
+        const QUEEN = '♛';
+
+        // Initialize Application
+        function init() {
+            createBoard(parseInt(sizeSelect.value));
+            initChart();
+            sizeSelect.addEventListener('change', (e) => {
+                if (!isRunning) {
+                    createBoard(parseInt(e.target.value));
+                }
+            });
+        }
+
+        // Create Main Chessboard
+        function createBoard(size) {
+            n = size;
+            boardContainer.innerHTML = '';
+            statSize.innerText = n;
+            
+            const board = document.createElement('div');
+            board.classList.add('chessboard');
+            board.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+            board.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+            
+            cells = [];
+            for (let r = 0; r < n; r++) {
+                cells[r] = [];
+                for (let c = 0; c < n; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+                    board.appendChild(cell);
+                    cells[r][c] = cell;
+                }
+            }
+            boardContainer.appendChild(board);
+            resetStats();
+        }
+
+        // Logging
+        function log(message, type) {
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry', `log-${type}`);
+            entry.innerText = `> ${message}`;
+            logContainer.appendChild(entry);
+            
+            if (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Stats Management
+        function resetStats() {
+            statSolutions.innerText = '0';
+            statBacktracks.innerText = '0';
+            statTime.innerText = '0.00';
+            statStatus.innerText = 'Idle';
+            statStatus.style.color = 'var(--warning)';
+            logContainer.innerHTML = '';
+            solutionsPanel.style.display = 'none';
+            solutions = [];
+            backtracks = 0;
+        }
+
+        function updateStatus(status, color) {
+            statStatus.innerText = status;
+            statStatus.style.color = color;
+        }
+
+        // Cell highlighting
+        function clearHighlights() {
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    cells[r][c].classList.remove('current', 'conflict', 'backtrack');
+                }
+            }
+        }
+
+        // Backtracking Logic & Generator
+        function isSafe(boardState, row, col) {
+            for (let i = 0; i < row; i++) {
+                let placedCol = boardState[i];
+                if (placedCol === col || 
+                    placedCol - i === col - row || 
+                    placedCol + i === col + row) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function* nQueensGenerator() {
+            let boardState = Array(n).fill(-1);
+            
+            function* solve(row) {
+                if (row === n) {
+                    solutions.push([...boardState]);
+                    yield { type: 'solution', board: [...boardState] };
+                    return;
+                }
+
+                for (let col = 0; col < n; col++) {
+                    yield { type: 'try', row, col };
+                    
+                    if (isSafe(boardState, row, col)) {
+                        boardState[row] = col;
+                        yield { type: 'place', row, col };
+                        
+                        yield* solve(row + 1);
+                        
+                        boardState[row] = -1;
+                        backtracks++;
+                        yield { type: 'remove', row, col };
+                    } else {
+                        yield { type: 'conflict', row, col };
+                    }
+                }
+            }
+            
+            yield* solve(0);
+        }
+
+        // Execution Controller
+        async function runAlgorithm() {
+            if (isRunning) return;
+            
+            n = parseInt(sizeSelect.value);
+            createBoard(n);
+            
+            isRunning = true;
+            runBtn.disabled = true;
+            sizeSelect.disabled = true;
+            updateStatus('Running...', 'var(--success)');
+            
+            abortController = new AbortController();
+            const signal = abortController.signal;
+            
+            const generator = nQueensGenerator();
+            let delay = n === 4 ? 150 : (n === 6 ? 10 : 0);
+            
+            const startTime = performance.now();
+            let stepCount = 0;
+
+            try {
+                for (let step of generator) {
+                    if (signal.aborted) throw new Error('Aborted');
+
+                    clearHighlights();
+                    
+                    if (step.type === 'try') {
+                        cells[step.row][step.col].classList.add('current');
+                        log(`Trying Row ${step.row + 1}, Col ${step.col + 1}`, 'try');
+                    } 
+                    else if (step.type === 'place') {
+                        cells[step.row][step.col].innerText = QUEEN;
+                        cells[step.row][step.col].classList.add('placed');
+                        log(`Queen placed at (${step.row + 1}, ${step.col + 1})`, 'place');
+                    } 
+                    else if (step.type === 'conflict') {
+                        cells[step.row][step.col].classList.add('conflict');
+                        cells[step.row][step.col].innerText = QUEEN;
+                        log(`Conflict at (${step.row + 1}, ${step.col + 1})`, 'conflict');
+                        
+                        // Briefly show conflict
+                        if (delay > 0) await new Promise(r => setTimeout(r, delay));
+                        cells[step.row][step.col].innerText = '';
+                    } 
+                    else if (step.type === 'remove') {
+                        cells[step.row][step.col].innerText = '';
+                        cells[step.row][step.col].classList.remove('placed');
+                        cells[step.row][step.col].classList.add('backtrack');
+                        statBacktracks.innerText = backtracks;
+                        log(`Backtracking from (${step.row + 1}, ${step.col + 1})`, 'remove');
+                    } 
+                    else if (step.type === 'solution') {
+                        statSolutions.innerText = solutions.length;
+                        log(`Solution ${solutions.length} Found!`, 'solution');
+                        if (delay > 0) await new Promise(r => setTimeout(r, delay * 3));
+                    }
+
+                    stepCount++;
+                    
+                    // Prevent UI freezing
+                    if (delay > 0) {
+                        await new Promise(r => setTimeout(r, delay));
+                    } else if (stepCount % 20 === 0) {
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                }
+                
+                const endTime = performance.now();
+                statTime.innerText = (endTime - startTime).toFixed(2);
+                updateStatus('Completed', 'var(--accent)');
+                log('Execution Completed', 'solution');
+                
+                updateChart(n, solutions.length);
+                
+                if (n === 4 && solutions.length > 0) {
+                    initSolutionGallery();
+                }
+
+            } catch (e) {
+                if (e.message === 'Aborted') {
+                    updateStatus('Reset', 'var(--error)');
+                    log('Execution Aborted', 'error');
+                }
+            } finally {
+                isRunning = false;
+                runBtn.disabled = false;
+                sizeSelect.disabled = false;
+            }
+        }
+
+        // Controls
+        function loadSample() {
+            if (isRunning) return;
+            sizeSelect.value = "4";
+            runAlgorithm();
+        }
+
+        function resetSimulation() {
+            if (abortController) {
+                abortController.abort();
+            }
+            createBoard(parseInt(sizeSelect.value));
+        }
+
+        // Solution Gallery (N=4 only)
+        function initSolutionGallery() {
+            solutionsPanel.style.display = 'flex';
+            currentSolutionIndex = 0;
+            renderMiniBoard(solutions[0]);
+            updateGalleryControls();
+        }
+
+        function renderMiniBoard(boardState) {
+            miniBoard.innerHTML = '';
+            miniBoard.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+            miniBoard.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+            
+            for (let r = 0; r < n; r++) {
+                for (let c = 0; c < n; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('mini-cell');
+                    cell.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+                    if (boardState[r] === c) {
+                        cell.innerText = QUEEN;
+                    }
+                    miniBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function updateGalleryControls() {
+            solutionCounter.innerText = `Solution ${currentSolutionIndex + 1} of ${solutions.length}`;
+        }
+
+        function prevSolution() {
+            if (solutions.length === 0) return;
+            currentSolutionIndex = (currentSolutionIndex - 1 + solutions.length) % solutions.length;
+            renderMiniBoard(solutions[currentSolutionIndex]);
+            updateGalleryControls();
+        }
+
+        function nextSolution() {
+            if (solutions.length === 0) return;
+            currentSolutionIndex = (currentSolutionIndex + 1) % solutions.length;
+            renderMiniBoard(solutions[currentSolutionIndex]);
+            updateGalleryControls();
+        }
+
+        // Chart.js Integration
+        let chartData = { 4: 2, 6: 4, 8: 92 }; // Actual mathematical solutions for comparison
+        
+        function initChart() {
+            const ctx = document.getElementById('solutionChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['N = 4', 'N = 6', 'N = 8'],
+                    datasets: [{
+                        label: 'Number of Solutions',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#bb86fc', '#03dac6', '#cf6679'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#333' },
+                            ticks: { color: '#e0e0e0' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#e0e0e0' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateChart(nValue, totalSolutions) {
+            let index = nValue === 4 ? 0 : (nValue === 6 ? 1 : 2);
+            chartInstance.data.datasets[0].data[index] = totalSolutions;
+            chartInstance.update();
+        }
+
+        // Run Init
+        window.onload = init;
+
+    </script>
+</body>
+</html>
