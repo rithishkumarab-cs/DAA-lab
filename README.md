@@ -27,9 +27,6 @@ Unlike traditional lab repositories that only contain source code, this reposito
 | 1          | Interpolation Search vs Binary Search    |    ✅   |       ✅       |
 | 2          | Naive, Rabin-Karp & KMP String Matching  |    ✅   |       ✅       |
 | 3          | Kruskal's & Prim's Minimum Spanning Tree |    ✅   |       ✅       |
-| 4          | Coming Soon                              |    ⏳   |       ⏳       |
-| 5          | Coming Soon                              |    ⏳   |       ⏳       |
-| 6          | Coming Soon                              |    ⏳   |       ⏳       |
 
 ---
 
