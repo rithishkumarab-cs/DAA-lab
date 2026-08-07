@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment No. 8: Travelling Salesman Problem</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --primary: #bb86fc;
+            --secondary: #03dac6;
+            --error: #cf6679;
+            --highlight: rgba(3, 218, 198, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1024px) {
+            .grid {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        /* Matrix Input */
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .matrix-table th, .matrix-table td {
+            padding: 5px;
+            text-align: center;
+        }
+
+        .matrix-table input {
+            width: 100%;
+            padding: 8px 5px;
+            background-color: #2c2c2c;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .matrix-table input:disabled {
+            background-color: #1a1a1a;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .matrix-table th {
+            color: var(--text-muted);
+            font-weight: normal;
+            font-size: 0.9rem;
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+            flex: 1;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        button.secondary {
+            background-color: #444;
+            color: #fff;
+        }
+
+        /* Stats & Output */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background-color: #2a2a2a;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .stat-box.highlight {
+            border-left-color: var(--secondary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-main);
+            margin-top: 5px;
+        }
+
+        .tour-display {
+            font-size: 1.2rem;
+            color: var(--secondary);
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        /* Canvas */
+        .canvas-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            background-color: #121212;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Path Details Table */
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .details-table th, .details-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .details-table th {
+            color: var(--text-muted);
+            background-color: #2a2a2a;
+        }
+
+        /* Step Log */
+        .log-box {
+            height: 150px;
+            background-color: #121212;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px dashed #333;
+        }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 250px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Experiment No. 8</h1>
+        <div style="color: var(--text-muted); font-size: 1.1rem;">Travelling Salesman Problem (5 Cities)</div>
+    </header>
+
+    <div class="grid">
+        <!-- Left Panel: Input & Stats -->
+        <div class="panel">
+            <h2>Cost Matrix</h2>
+            <table class="matrix-table" id="costMatrix">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>0</th>
+                        <th>1</th>
+                        <th>2</th>
+                        <th>3</th>
+                        <th>4</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Generated by JS -->
+                </tbody>
+            </table>
+
+            <div class="btn-group">
+                <button class="secondary" onclick="loadSample()">Load Sample</button>
+                <button class="secondary" onclick="resetMatrix()">Reset</button>
+            </div>
+            <button style="width: 100%; margin-bottom: 20px;" onclick="runAlgorithm()">Run Algorithm</button>
+
+            <h2>Statistics & Output</h2>
+            <div class="stat-grid">
+                <div class="stat-box">
+                    <div class="stat-label">Number of Cities</div>
+                    <div class="stat-value">5</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Tours Evaluated</div>
+                    <div class="stat-value" id="toursEvaluated">-</div>
+                </div>
+                <div class="stat-box highlight">
+                    <div class="stat-label">Minimum Cost</div>
+                    <div class="stat-value" id="minCost" style="color: var(--secondary);">-</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Execution Time</div>
+                    <div class="stat-value" id="execTime">-</div>
+                </div>
+                <div class="stat-box" style="grid-column: span 2;">
+                    <div class="stat-label">Status</div>
+                    <div class="stat-value" id="status" style="color: var(--primary);">Idle</div>
+                </div>
+            </div>
+
+            <div class="stat-label" style="margin-bottom: 5px;">Optimal Tour</div>
+            <div class="tour-display" id="optimalTour">-</div>
+        </div>
+
+        <!-- Right Panel: Visualization, Details, Logs -->
+        <div class="panel">
+            <h2>Graph Visualization</h2>
+            <div class="canvas-container">
+                <canvas id="graphCanvas" width="500" height="400"></canvas>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h2>Path Details</h2>
+                    <table class="details-table" id="pathTable">
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Cost</th>
+                                <th>Running Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Run algorithm to view details.</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h2>Step Log</h2>
+                    <div class="log-box" id="stepLog"></div>
+                </div>
+                
+                <div>
+                    <h2>Optimal Tour Edge Costs</h2>
+                    <div class="chart-container">
+                        <canvas id="costChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const N = 5;
+    let chartInstance = null;
+    let animId = null;
+
+    // Node positions for pentagon layout
+    const nodes = [
+        { id: 0, x: 250, y: 50 },
+        { id: 1, x: 440, y: 188 },
+        { id: 2, x: 367, y: 361 },
+        { id: 3, x: 132, y: 361 },
+        { id: 4, x: 60, y: 188 }
+    ];
+
+    // Initialize Matrix UI
+    function initMatrix() {
+        const tbody = document.querySelector('#costMatrix tbody');
+        tbody.innerHTML = '';
+        for (let i = 0; i < N; i++) {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.textContent = i;
+            tr.appendChild(th);
+            for (let j = 0; j < N; j++) {
+                const td = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = `m_${i}_${j}`;
+                if (i === j) {
+                    input.value = 0;
+                    input.disabled = true;
+                }
+                td.appendChild(input);
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        }
+        drawBaseGraph();
+    }
+
+    function loadSample() {
+        const sample = [
+            [0, 10, 8, 9, 7],
+            [10, 0, 10, 5, 6],
+            [8, 10, 0, 8, 9],
+            [9, 5, 8, 0, 6],
+            [7, 6, 9, 6, 0]
+        ];
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                if (i !== j) {
+                    document.getElementById(`m_${i}_${j}`).value = sample[i][j];
+                }
+            }
+        }
+        clearOutputs();
+        drawBaseGraph();
+    }
+
+    function resetMatrix() {
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                if (i !== j) {
+                    document.getElementById(`m_${i}_${j}`).value = '';
+                }
+            }
+        }
+        clearOutputs();
+        drawBaseGraph();
+    }
+
+    function clearOutputs() {
+        document.getElementById('toursEvaluated').textContent = '-';
+        document.getElementById('minCost').textContent = '-';
+        document.getElementById('execTime').textContent = '-';
+        document.getElementById('status').textContent = 'Idle';
+        document.getElementById('optimalTour').textContent = '-';
+        document.getElementById('stepLog').innerHTML = '';
+        document.querySelector('#pathTable tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Run algorithm to view details.</td></tr>';
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        if (animId) {
+            cancelAnimationFrame(animId);
+        }
+    }
+
+    function logStep(msg, highlight = false) {
+        const logBox = document.getElementById('stepLog');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.textContent = `> ${msg}`;
+        if (highlight) {
+            entry.style.color = 'var(--secondary)';
+            entry.style.fontWeight = 'bold';
+        }
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // Helper: Generate Permutations
+    function getPermutations(arr) {
+        if (arr.length === 0) return [[]];
+        let result = [];
+        for (let i = 0; i < arr.length; i++) {
+            let rest = getPermutations(arr.slice(0, i).concat(arr.slice(i + 1)));
+            for (let j = 0; j < rest.length; j++) {
+                result.push([arr[i]].concat(rest[j]));
+            }
+        }
+        return result;
+    }
+
+    function runAlgorithm() {
+        clearOutputs();
+        
+        // Build Cost Matrix
+        let matrix = [];
+        for (let i = 0; i < N; i++) {
+            matrix[i] = [];
+            for (let j = 0; j < N; j++) {
+                if (i === j) {
+                    matrix[i][j] = 0;
+                } else {
+                    let val = document.getElementById(`m_${i}_${j}`).value;
+                    matrix[i][j] = val === '' ? Infinity : parseInt(val);
+                }
+            }
+        }
+
+        logStep("Generating Paths...");
+        const t0 = performance.now();
+
+        // Fix starting node at 0, permute 1,2,3,4
+        const citiesToPermute = [1, 2, 3, 4];
+        const perms = getPermutations(citiesToPermute);
+        
+        logStep(`Evaluating Tour (${perms.length} permutations)...`);
+        
+        let minCost = Infinity;
+        let bestPath = [];
+
+        for (let i = 0; i < perms.length; i++) {
+            let currentPath = [0].concat(perms[i]).concat([0]);
+            let currentCost = 0;
+            let isValid = true;
+            
+            for (let j = 0; j < currentPath.length - 1; j++) {
+                let from = currentPath[j];
+                let to = currentPath[j+1];
+                if (matrix[from][to] === Infinity) {
+                    isValid = false;
+                    break;
+                }
+                currentCost += matrix[from][to];
+            }
+
+            if (isValid && currentCost < minCost) {
+                minCost = currentCost;
+                bestPath = currentPath;
+                logStep(`Updating Best Cost: ${minCost}`);
+            }
+        }
+
+        const t1 = performance.now();
+
+        if (minCost === Infinity) {
+            logStep("No valid tour found.", true);
+            document.getElementById('status').textContent = 'No Valid Tour';
+            document.getElementById('status').style.color = 'var(--error)';
+            return;
+        }
+
+        logStep("Optimal Tour Found!", true);
+        logStep("Completed.");
+
+        // Update UI
+        document.getElementById('toursEvaluated').textContent = perms.length;
+        document.getElementById('minCost').textContent = minCost;
+        document.getElementById('execTime').textContent = (t1 - t0).toFixed(2) + ' ms';
+        document.getElementById('status').textContent = 'Completed';
+        document.getElementById('status').style.color = 'var(--secondary)';
+        document.getElementById('optimalTour').textContent = bestPath.join(' → ');
+
+        // Path Details & Chart Data
+        const tbody = document.querySelector('#pathTable tbody');
+        tbody.innerHTML = '';
+        let runningTotal = 0;
+        let chartLabels = [];
+        let chartData = [];
+
+        for (let j = 0; j < bestPath.length - 1; j++) {
+            let from = bestPath[j];
+            let to = bestPath[j+1];
+            let cost = matrix[from][to];
+            runningTotal += cost;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${from}</td>
+                <td>${to}</td>
+                <td>${cost}</td>
+                <td><strong>${runningTotal}</strong></td>
+            `;
+            tbody.appendChild(tr);
+
+            chartLabels.push(`${from} → ${to}`);
+            chartData.push(cost);
+        }
+
+        renderChart(chartLabels, chartData);
+        animateTour(bestPath, matrix);
+    }
+
+    // Chart
+    function renderChart(labels, data) {
+        const ctx = document.getElementById('costChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Edge Cost',
+                    data: data,
+                    backgroundColor: '#03dac6',
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#333' },
+                        ticks: { color: '#9e9e9e' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#9e9e9e' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Canvas Visualization
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const nodeRadius = 18;
+
+    function drawBaseGraph() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw light edges for all connections
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                ctx.beginPath();
+                ctx.moveTo(nodes[i].x, nodes[i].y);
+                ctx.lineTo(nodes[j].x, nodes[j].y);
+                ctx.stroke();
+            }
+        }
+
+        // Draw Nodes
+        for (let i = 0; i < N; i++) {
+            ctx.beginPath();
+            ctx.arc(nodes[i].x, nodes[i].y, nodeRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#1e1e1e';
+            ctx.fill();
+            ctx.strokeStyle = '#bb86fc';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#e0e0e0';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(nodes[i].id, nodes[i].x, nodes[i].y);
+        }
+    }
+
+    function drawArrow(fromX, fromY, toX, toY, color) {
+        const headlen = 12; 
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const angle = Math.atan2(dy, dx);
+        
+        // Adjust to touch the node border, not center
+        const startX = fromX + nodeRadius * Math.cos(angle);
+        const startY = fromY + nodeRadius * Math.sin(angle);
+        const endX = toX - nodeRadius * Math.cos(angle);
+        const endY = toY - nodeRadius * Math.sin(angle);
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(endX, endY);
+        ctx.fill();
+    }
+
+    function animateTour(path, matrix) {
+        if (animId) cancelAnimationFrame(animId);
+        
+        let segments = [];
+        for (let i = 0; i < path.length - 1; i++) {
+            segments.push({
+                from: nodes[path[i]],
+                to: nodes[path[i+1]],
+                cost: matrix[path[i]][path[i+1]]
+            });
+        }
+
+        let progress = 0;
+        const totalDuration = 100; // frames roughly
+
+        function render() {
+            drawBaseGraph();
+            progress += 1;
+            
+            let segmentsToDraw = Math.floor((progress / totalDuration) * segments.length);
+            
+            for (let i = 0; i <= segmentsToDraw && i < segments.length; i++) {
+                drawArrow(segments[i].from.x, segments[i].from.y, segments[i].to.x, segments[i].to.y, '#03dac6');
+                
+                // Draw cost label on the edge
+                const mx = (segments[i].from.x + segments[i].to.x) / 2;
+                const my = (segments[i].from.y + segments[i].to.y) / 2;
+                ctx.fillStyle = '#121212';
+                ctx.fillRect(mx - 12, my - 10, 24, 20);
+                ctx.fillStyle = '#cf6679';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText(segments[i].cost, mx, my);
+            }
+
+            if (progress < totalDuration) {
+                animId = requestAnimationFrame(render);
+            }
+        }
+        
+        render();
+    }
+
+    // Init on load
+    window.onload = initMatrix;
+
+</script>
+</body>
+</html>

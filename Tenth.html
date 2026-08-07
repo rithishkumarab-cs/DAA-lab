@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment No. 10: Quick Sort Efficiency</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface: #1e1e1e;
+            --surface-alt: #2c2c2c;
+            --primary: #bb86fc;
+            --secondary: #03dac6;
+            --error: #cf6679;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --border: #333333;
+            
+            --bar-normal: #bb86fc;
+            --bar-compare: #ffb74d;
+            --bar-swap: #cf6679;
+            --bar-pivot: #03dac6;
+            --bar-sorted: #4caf50;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            color: var(--text-main);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 350px 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Forms & Buttons */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-size: 0.9rem;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary { background-color: var(--primary); color: #000; }
+        .btn-secondary { background-color: var(--surface-alt); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-action { background-color: var(--secondary); color: #000; grid-column: 1 / -1; padding: 12px;}
+
+        /* Output Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--surface-alt);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .card.randomized { border-left-color: var(--secondary); }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .card-val { font-weight: bold; color: var(--text-main); }
+        .status-idle { color: var(--text-muted); }
+        .status-running { color: var(--error); }
+        .status-done { color: var(--secondary); }
+
+        /* Visualization */
+        .viz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .viz-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .bars-container {
+            height: 250px;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            background-color: var(--bg-color);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .bar {
+            flex: 1;
+            background-color: var(--bar-normal);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.1s, background-color 0.1s;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+
+        /* Tables & Logs */
+        .table-responsive { overflow-x: auto; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background-color: var(--surface-alt); color: var(--text-muted); font-weight: 500; }
+        .highlight-row { background-color: rgba(3, 218, 198, 0.1); }
+
+        .logs-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .logs-stats-grid { grid-template-columns: 1fr; } }
+
+        .step-log {
+            height: 200px;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .log-entry { margin-bottom: 4px; border-bottom: 1px dashed #222; padding-bottom: 4px; }
+        .log-pivot { color: var(--bar-pivot); }
+        .log-compare { color: var(--bar-compare); }
+        .log-swap { color: var(--bar-swap); }
+        .log-done { color: var(--bar-sorted); font-weight: bold;}
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background-color: var(--surface-alt);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-val-large { font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 5px;}
+        .stat-label-small { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+
+        /* Chart */
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            background-color: var(--surface-alt);
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Experiment No. 10</h1>
+            <p style="color: var(--text-muted);">Improving Quick Sort Efficiency using Randomized Algorithm</p>
+        </header>
+
+        <div class="dashboard">
+            <!-- Left Sidebar -->
+            <div>
+                <div class="panel">
+                    <h2>Configuration</h2>
+                    <div class="form-group">
+                        <label>Input Type</label>
+                        <select id="inputType">
+                            <option value="random">Random</option>
+                            <option value="sorted">Sorted</option>
+                            <option value="reverse">Reverse Sorted</option>
+                            <option value="nearly">Nearly Sorted</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Array Size (Benchmark)</label>
+                        <select id="arraySize">
+                            <option value="1000">1000</option>
+                            <option value="5000">5000</option>
+                            <option value="10000">10000</option>
+                        </select>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn-secondary" onclick="loadSample()">Load Sample</button>
+                        <button class="btn-secondary" onclick="generateArrays()">Generate Array</button>
+                        <button class="btn-secondary" onclick="resetAll()" style="grid-column: 1 / -1;">Reset</button>
+                        <button class="btn-action" id="runBtn" onclick="runComparison()">Run Comparison</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Benchmark Results</h2>
+                    <div class="cards-grid">
+                        <div class="card">
+                            <div class="card-title">Deterministic Quick Sort</div>
+                            <div class="card-row"><span>Comparisons:</span> <span class="card-val" id="detComps">-</span></div>
+                            <div class="card-row"><span>Execution Time:</span> <span class="card-val" id="detTime">-</span></div>
+                            <div class="card-row"><span>Status:</span> <span class="card-val status-idle" id="detStatus">Idle</span></div>
+                        </div>
+                        <div class="card randomized">
+                            <div class="card-title" style="color: var(--secondary);">Randomized Quick Sort</div>
+                            <div class="card-row"><span>Comparisons:</span> <span class="card-val" id="ranComps">-</span></div>
+                            <div class="card-row"><span>Execution Time:</span> <span class="card-val" id="ranTime">-</span></div>
+                            <div class="card-row"><span>Status:</span> <span class="card-val status-idle" id="ranStatus">Idle</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Execution Time Chart</h2>
+                    <div class="chart-container">
+                        <canvas id="perfChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Main Area -->
+            <div>
+                <div class="panel">
+                    <div class="viz-header">
+                        <h2>Sort Visualization (Randomized QS)</h2>
+                        <div class="viz-controls">
+                            <button class="btn-secondary" id="playBtn" onclick="playAnim()" disabled>Play</button>
+                            <button class="btn-secondary" id="pauseBtn" onclick="pauseAnim()" disabled>Pause</button>
+                            <input type="range" id="speedSlider" min="1" max="100" value="50" style="width: 100px;">
+                        </div>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Visualizing on a smaller sample (N=50) for clarity.</p>
+                    <div class="bars-container" id="barsContainer">
+                        <!-- Bars injected via JS -->
+                    </div>
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-color" style="background: var(--bar-normal);"></div> Unsorted</div>
+                        <div class="legend-item"><div class="legend-color" style="background: var(--bar-pivot);"></div> Pivot</div>
+                        <div class="legend-item"><div class="legend-color" style="background: var(--bar-compare);"></div> Comparing</div>
+                        <div class="legend-item"><div class="legend-color" style="background: var(--bar-swap);"></div> Swapping</div>
+                        <div class="legend-item"><div class="legend-color" style="background: var(--bar-sorted);"></div> Sorted</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h2>Comparison Table</h2>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Comparisons</th>
+                                    <th>Exec Time (ms)</th>
+                                    <th>Expected Time Complexity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compTableBody">
+                                <tr><td colspan="4" style="text-align: center;">Run comparison to see results</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="logs-stats-grid">
+                        <div>
+                            <h2>Step Log</h2>
+                            <div class="step-log" id="stepLog"></div>
+                        </div>
+                        <div>
+                            <h2>Live Statistics</h2>
+                            <div class="stat-grid">
+                                <div class="stat-item">
+                                    <div class="stat-val-large" id="statSize">-</div>
+                                    <div class="stat-label-small">Array Size</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-val-large" id="statType" style="color: var(--secondary);">-</div>
+                                    <div class="stat-label-small">Input Type</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-val-large" id="statVizComps">-</div>
+                                    <div class="stat-label-small">Viz Comparisons</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-val-large" id="statPivot">-</div>
+                                    <div class="stat-label-small">Current Pivot Val</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let chartInstance = null;
+        let benchArray = [];
+        let vizArrayOriginal = [];
+        let vizArray = [];
+        let animSteps = [];
+        let animIndex = 0;
+        let animFrameId = null;
+        let isPlaying = false;
+        let isPaused = false;
+        let currentVizComps = 0;
+
+        // --- Utility Functions ---
+        function getArray(type, size) {
+            let arr = new Float32Array(size);
+            for (let i = 0; i < size; i++) arr[i] = i + 1;
+
+            if (type === 'random') {
+                for (let i = size - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+            } else if (type === 'reverse') {
+                arr.reverse();
+            } else if (type === 'nearly') {
+                let swaps = Math.max(1, Math.floor(size * 0.05));
+                for (let k = 0; k < swaps; k++) {
+                    const i = Math.floor(Math.random() * size);
+                    const j = Math.floor(Math.random() * size);
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+            }
+            return arr;
+        }
+
+        // Output Logging
+        function logMsg(msg, typeClass = '') {
+            const logContainer = document.getElementById('stepLog');
+            const div = document.createElement('div');
+            div.className = `log-entry ${typeClass}`;
+            div.innerText = `> ${msg}`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('stepLog').innerHTML = '';
+        }
+
+        // --- Benchmark Quicksort (Iterative to prevent Stack Overflow on large reverse arrays) ---
+        function benchmarkQuickSort(arrOriginal, isRandomized) {
+            let arr = new Float32Array(arrOriginal);
+            let stack = [[0, arr.length - 1]];
+            let comparisons = 0;
+            
+            let t0 = performance.now();
+
+            while (stack.length > 0) {
+                let [low, high] = stack.pop();
+                
+                if (low < high) {
+                    if (isRandomized) {
+                        let pIdx = Math.floor(Math.random() * (high - low + 1)) + low;
+                        let t = arr[pIdx]; arr[pIdx] = arr[high]; arr[high] = t;
+                    }
+                    
+                    let pivot = arr[high];
+                    let i = low - 1;
+                    
+                    for (let j = low; j < high; j++) {
+                        comparisons++;
+                        if (arr[j] < pivot) {
+                            i++;
+                            let t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+                        }
+                    }
+                    let t2 = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = t2;
+                    let pi = i + 1;
+                    
+                    // Push larger sub-array first to minimize stack depth
+                    if (pi - low > high - pi) {
+                        stack.push([low, pi - 1]);
+                        stack.push([pi + 1, high]);
+                    } else {
+                        stack.push([pi + 1, high]);
+                        stack.push([low, pi - 1]);
+                    }
+                }
+            }
+            let t1 = performance.now();
+            return { time: (t1 - t0).toFixed(2), comparisons };
+        }
+
+        // --- Visualization Quicksort Generator ---
+        function* generateQSSteps(arr, low, high, isRandomized) {
+            if (low < high) {
+                yield { type: 'call', low, high };
+                
+                if (isRandomized) {
+                    let pIdx = Math.floor(Math.random() * (high - low + 1)) + low;
+                    yield { type: 'select_pivot', idx: pIdx, val: arr[pIdx] };
+                    let t = arr[pIdx]; arr[pIdx] = arr[high]; arr[high] = t;
+                    yield { type: 'swap', i: pIdx, j: high, arr: [...arr] };
+                }
+                
+                let pivot = arr[high];
+                yield { type: 'pivot', idx: high, val: pivot };
+                
+                let i = low - 1;
+                for (let j = low; j < high; j++) {
+                    yield { type: 'compare', i: j, pivotIdx: high };
+                    if (arr[j] < pivot) {
+                        i++;
+                        let t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+                        if (i !== j) {
+                            yield { type: 'swap', i, j, arr: [...arr] };
+                        }
+                    }
+                }
+                let t2 = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = t2;
+                let pi = i + 1;
+                
+                if (pi !== high) {
+                    yield { type: 'swap', i: pi, j: high, arr: [...arr] };
+                }
+                yield { type: 'partition_done', pi };
+                
+                yield* generateQSSteps(arr, low, pi - 1, isRandomized);
+                yield* generateQSSteps(arr, pi + 1, high, isRandomized);
+            } else if (low === high) {
+                yield { type: 'sorted', idx: low };
+            }
+        }
+
+        // --- UI Interactions ---
+        function loadSample() {
+            document.getElementById('inputType').value = 'nearly';
+            document.getElementById('arraySize').value = '5000';
+            generateArrays();
+        }
+
+        function generateArrays() {
+            const type = document.getElementById('inputType').value;
+            const size = parseInt(document.getElementById('arraySize').value);
+            
+            benchArray = getArray(type, size);
+            vizArrayOriginal = getArray(type, 50); // Fixed size for viz
+            
+            document.getElementById('statSize').innerText = size;
+            document.getElementById('statType').innerText = type.toUpperCase();
+            
+            resetViz();
+        }
+
+        function resetAll() {
+            benchArray = [];
+            vizArrayOriginal = [];
+            document.getElementById('inputType').value = 'random';
+            document.getElementById('arraySize').value = '1000';
+            
+            ['detComps', 'detTime', 'ranComps', 'ranTime'].forEach(id => document.getElementById(id).innerText = '-');
+            
+            const detStat = document.getElementById('detStatus');
+            detStat.innerText = 'Idle'; detStat.className = 'card-val status-idle';
+            const ranStat = document.getElementById('ranStatus');
+            ranStat.innerText = 'Idle'; ranStat.className = 'card-val status-idle';
+            
+            document.getElementById('compTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center;">Run comparison to see results</td></tr>';
+            document.getElementById('statSize').innerText = '-';
+            document.getElementById('statType').innerText = '-';
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+            resetViz();
+        }
+
+        function resetViz() {
+            vizArray = [...vizArrayOriginal];
+            animSteps = [];
+            animIndex = 0;
+            currentVizComps = 0;
+            isPlaying = false;
+            isPaused = false;
+            if (animFrameId) clearTimeout(animFrameId);
+            
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('playBtn').innerText = 'Play';
+            
+            document.getElementById('statVizComps').innerText = '0';
+            document.getElementById('statPivot').innerText = '-';
+            clearLog();
+            
+            drawBars(vizArray, {});
+        }
+
+        // --- Visualizer Drawing ---
+        function drawBars(arr, highlights) {
+            const container = document.getElementById('barsContainer');
+            container.innerHTML = '';
+            
+            const maxVal = Math.max(...arr);
+            
+            arr.forEach((val, idx) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                const heightPct = (val / maxVal) * 100;
+                bar.style.height = `${Math.max(5, heightPct)}%`;
+                
+                if (highlights.sorted && highlights.sorted.has(idx)) {
+                    bar.style.backgroundColor = 'var(--bar-sorted)';
+                } else if (highlights.pivot === idx) {
+                    bar.style.backgroundColor = 'var(--bar-pivot)';
+                } else if (highlights.compare && highlights.compare.includes(idx)) {
+                    bar.style.backgroundColor = 'var(--bar-compare)';
+                } else if (highlights.swap && highlights.swap.includes(idx)) {
+                    bar.style.backgroundColor = 'var(--bar-swap)';
+                }
+                
+                container.appendChild(bar);
+            });
+        }
+
+        // --- Execution ---
+        async function runComparison() {
+            if (benchArray.length === 0) generateArrays();
+            
+            const runBtn = document.getElementById('runBtn');
+            runBtn.disabled = true;
+            
+            // Set UI Status
+            document.getElementById('detStatus').innerText = 'Running...';
+            document.getElementById('detStatus').className = 'card-val status-running';
+            document.getElementById('ranStatus').innerText = 'Running...';
+            document.getElementById('ranStatus').className = 'card-val status-running';
+            
+            // Short timeout to allow UI update
+            await new Promise(r => setTimeout(r, 50));
+            
+            // Run Deterministic
+            const detRes = benchmarkQuickSort(benchArray, false);
+            document.getElementById('detComps').innerText = detRes.comparisons.toLocaleString();
+            document.getElementById('detTime').innerText = `${detRes.time} ms`;
+            document.getElementById('detStatus').innerText = 'Done';
+            document.getElementById('detStatus').className = 'card-val status-done';
+            
+            await new Promise(r => setTimeout(r, 50));
+            
+            // Run Randomized
+            const ranRes = benchmarkQuickSort(benchArray, true);
+            document.getElementById('ranComps').innerText = ranRes.comparisons.toLocaleString();
+            document.getElementById('ranTime').innerText = `${ranRes.time} ms`;
+            document.getElementById('ranStatus').innerText = 'Done';
+            document.getElementById('ranStatus').className = 'card-val status-done';
+            
+            // Update Table
+            const tbody = document.getElementById('compTableBody');
+            const isDetFaster = parseFloat(detRes.time) <= parseFloat(ranRes.time);
+            
+            tbody.innerHTML = `
+                <tr class="${isDetFaster ? 'highlight-row' : ''}">
+                    <td>Deterministic QS</td>
+                    <td>${detRes.comparisons.toLocaleString()}</td>
+                    <td>${detRes.time}</td>
+                    <td>O(N log N) / Worst: O(N²)</td>
+                </tr>
+                <tr class="${!isDetFaster ? 'highlight-row' : ''}">
+                    <td>Randomized QS</td>
+                    <td>${ranRes.comparisons.toLocaleString()}</td>
+                    <td>${ranRes.time}</td>
+                    <td>Expected: O(N log N)</td>
+                </tr>
+            `;
+            
+            // Update Chart
+            updateChart(parseFloat(detRes.time), parseFloat(ranRes.time));
+            
+            // Prepare Visualization (Randomized)
+            resetViz();
+            const gen = generateQSSteps([...vizArray], 0, vizArray.length - 1, true);
+            animSteps = Array.from(gen);
+            
+            document.getElementById('playBtn').disabled = false;
+            runBtn.disabled = false;
+        }
+
+        // --- Animation Player ---
+        function playAnim() {
+            if (animIndex >= animSteps.length) return;
+            isPlaying = true;
+            isPaused = false;
+            document.getElementById('playBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            stepAnim();
+        }
+
+        function pauseAnim() {
+            isPaused = true;
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('playBtn').innerText = 'Resume';
+            document.getElementById('pauseBtn').disabled = true;
+        }
+
+        let sortedSet = new Set();
+
+        function stepAnim() {
+            if (isPaused || !isPlaying) return;
+            if (animIndex >= animSteps.length) {
+                isPlaying = false;
+                document.getElementById('pauseBtn').disabled = true;
+                logMsg('Sorting Completed!', 'log-done');
+                
+                // Color all green
+                const allSorted = new Set(vizArray.map((_, i) => i));
+                drawBars(vizArray, { sorted: allSorted });
+                return;
+            }
+
+            const step = animSteps[animIndex];
+            let highlights = { sorted: sortedSet };
+            
+            const speed = 101 - document.getElementById('speedSlider').value; // 1 to 100 ms
+
+            if (step.type === 'call') {
+                logMsg(`Recursive Call: Partition [${step.low}, ${step.high}]`);
+            } else if (step.type === 'select_pivot') {
+                logMsg(`Selecting Random Pivot at index ${step.idx} (Val: ${step.val})`, 'log-pivot');
+                highlights.pivot = step.idx;
+            } else if (step.type === 'pivot') {
+                document.getElementById('statPivot').innerText = step.val;
+                highlights.pivot = step.idx;
+            } else if (step.type === 'compare') {
+                currentVizComps++;
+                document.getElementById('statVizComps').innerText = currentVizComps;
+                highlights.compare = [step.i, step.pivotIdx];
+                highlights.pivot = step.pivotIdx;
+                if (animIndex % 5 === 0) logMsg(`Comparing element at ${step.i} with pivot`, 'log-compare');
+            } else if (step.type === 'swap') {
+                vizArray = step.arr;
+                highlights.swap = [step.i, step.j];
+                logMsg(`Swapping Elements at ${step.i} and ${step.j}`, 'log-swap');
+            } else if (step.type === 'partition_done') {
+                sortedSet.add(step.pi);
+                logMsg(`Partition Completed. Pivot fixed at ${step.pi}`, 'log-done');
+            } else if (step.type === 'sorted') {
+                sortedSet.add(step.idx);
+            }
+
+            drawBars(vizArray, highlights);
+            animIndex++;
+            animFrameId = setTimeout(stepAnim, speed);
+        }
+
+        // --- Chart Generation ---
+        function updateChart(detTime, ranTime) {
+            const ctx = document.getElementById('perfChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Deterministic QS', 'Randomized QS'],
+                    datasets: [{
+                        label: 'Execution Time (ms)',
+                        data: [detTime, ranTime],
+                        backgroundColor: ['#bb86fc', '#03dac6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#333' },
+                            ticks: { color: '#9e9e9e' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#e0e0e0' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Init blank state
+        window.onload = () => {
+            generateArrays();
+        };
+    </script>
+</body>
+</html>
